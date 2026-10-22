@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { DemandHotspot, Language, UserSession } from '../types';
   import { HOTSPOT_CATEGORY_META, HOTSPOT_LEVEL_META } from '../data/hotspots';
+  import Icon from './Icon.svelte';
 
   export let hotspot: DemandHotspot;
   export let language: Language = 'tl';
@@ -28,8 +29,8 @@
         class="w-13 h-13 rounded-2xl flex items-center justify-center text-2xl shrink-0 shadow-xs border relative"
         style={`background-color: ${lvlMeta.badgeBg}; border-color: ${lvlMeta.mapStroke};`}
       >
-        <span>{catMeta.icon}</span>
-        <span class="absolute -top-1 -right-1 text-xs">{lvlMeta.iconEmoji}</span>
+        <Icon name={catMeta.icon} size={22} />
+        <span class="absolute -top-1 -right-1"><Icon name={lvlMeta.iconEmoji} size={12} /></span>
       </div>
 
       <div class="min-w-0">
@@ -38,7 +39,10 @@
             class="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full"
             style={`background-color: ${lvlMeta.badgeBg}; color: ${lvlMeta.badgeColor};`}
           >
-            {lvlMeta.iconEmoji} {language === 'tl' ? lvlMeta.labelTl : lvlMeta.labelEn}
+            <span class="inline-flex items-center gap-1">
+              <Icon name={lvlMeta.iconEmoji} size={10} />
+              {language === 'tl' ? lvlMeta.labelTl : lvlMeta.labelEn}
+            </span>
           </span>
           <span class={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
             isDarkMode ? 'bg-[#352317] text-[#D6C7B2]' : 'bg-[#FAF7F2] text-[#796658]'

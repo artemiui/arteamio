@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Language } from '../types';
+  import Icon from './Icon.svelte';
 
   export let language: Language = 'tl';
 
@@ -60,7 +61,7 @@
             : 'bg-[#4A2E1B] text-[#FAF7F2] hover:bg-[#361F11]'
         }`}
       >
-        <span>{isBroadcasting ? '⏹' : '▶'}</span>
+        <Icon name={isBroadcasting ? 'stop' : 'play'} size={18} />
         <span>
           {isBroadcasting
             ? (language === 'tl' ? 'Itigil ang Pag-broadcast' : 'Stop Broadcasting')
@@ -71,7 +72,7 @@
       <!-- Live Waiting Buyers Pill -->
       {#if isBroadcasting}
         <div class="p-3.5 bg-[#FAF7F2] border border-[#EAE4D9] rounded-2xl text-xs sm:text-sm text-[#4A2E1B] font-bold flex items-center justify-center gap-2 animate-pulse">
-          <span class="text-base">👥</span>
+          <Icon name="users" size={16} />
           <span>
             <strong>{audienceCount}</strong> {language === 'tl' ? 'na kapitbahay sa paligid ang naghihintay sa ruta mo!' : 'neighbors currently waiting along your path!'}
           </span>

@@ -5,7 +5,7 @@ export const HOTSPOT_CATEGORY_META: Record<
   { icon: string; labelTl: string; labelEn: string; color: string; bgLight: string; bgDark: string }
 > = {
   school: {
-    icon: '🎓',
+    icon: 'school',
     labelTl: 'Uwian ng Estudyante',
     labelEn: 'School Dismissals',
     color: '#2563EB',
@@ -13,7 +13,7 @@ export const HOTSPOT_CATEGORY_META: Record<
     bgDark: '#1E3A8A',
   },
   basketball: {
-    icon: '🏀',
+    icon: 'trophy',
     labelTl: 'Palaro / Liga sa Court',
     labelEn: 'Basketball Games',
     color: '#EA580C',
@@ -21,7 +21,7 @@ export const HOTSPOT_CATEGORY_META: Record<
     bgDark: '#7C2D12',
   },
   barangay: {
-    icon: '🎪',
+    icon: 'tent',
     labelTl: 'Kaganapan sa Barangay',
     labelEn: 'Barangay Events',
     color: '#059669',
@@ -29,7 +29,7 @@ export const HOTSPOT_CATEGORY_META: Record<
     bgDark: '#064E3B',
   },
   commuter: {
-    icon: '🚌',
+    icon: 'bus',
     labelTl: 'Rush Hour sa Sakayan',
     labelEn: 'Commuter Rush Hours',
     color: '#7C3AED',
@@ -57,7 +57,7 @@ export const HOTSPOT_LEVEL_META: Record<
     badgeBg: 'rgba(239, 68, 68, 0.15)',
     mapStroke: '#DC2626',
     mapFill: '#EF4444',
-    iconEmoji: '🔴',
+    iconEmoji: 'dot-high',
   },
   medium: {
     labelTl: 'Katamtamang Potensyal',
@@ -66,7 +66,7 @@ export const HOTSPOT_LEVEL_META: Record<
     badgeBg: 'rgba(245, 158, 11, 0.15)',
     mapStroke: '#EA580C',
     mapFill: '#F97316',
-    iconEmoji: '🟠',
+    iconEmoji: 'dot-medium',
   },
   low: {
     labelTl: 'Mababang Potensyal',
@@ -75,7 +75,7 @@ export const HOTSPOT_LEVEL_META: Record<
     badgeBg: 'rgba(234, 179, 8, 0.15)',
     mapStroke: '#CA8A04',
     mapFill: '#EAB308',
-    iconEmoji: '🟡',
+    iconEmoji: 'dot-low',
   },
 };
 

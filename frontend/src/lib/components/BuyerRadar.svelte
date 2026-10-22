@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Language, LiveVendor } from '../types';
+  import Icon from './Icon.svelte';
 
   export let vendors: LiveVendor[] = [];
   export let language: Language = 'tl';
@@ -51,8 +52,8 @@
   <!-- Warm Callout Hero Banner (Inspired by Moonli & Circular Design) -->
   <div class="bg-gradient-to-r from-[#FEF3C7] via-[#FAF7F2] to-white p-5 sm:p-6 rounded-[32px] border border-[#D97706]/25 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
     <div class="flex items-center gap-4">
-      <div class="w-14 h-14 rounded-2xl bg-[#D97706] text-white flex items-center justify-center text-3xl shadow-sm shrink-0">
-        🥣
+      <div class="w-14 h-14 rounded-2xl bg-[#D97706] text-white flex items-center justify-center shadow-sm shrink-0">
+        <Icon name="bowl" size={28} />
       </div>
       <div>
         <h3 class="text-lg sm:text-xl font-extrabold text-[#4A2E1B] leading-tight">

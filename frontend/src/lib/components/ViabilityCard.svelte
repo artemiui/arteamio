@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { BusinessArchetype, Language, ViabilityResult } from '../types';
+  import Icon from './Icon.svelte';
 
   export let archetypes: BusinessArchetype[] = [];
   export let selectedArchetype: BusinessArchetype;
@@ -62,7 +63,7 @@
           }`}
         >
           <div class="flex items-center justify-between w-full">
-            <span class="text-2xl">{item.icon}</span>
+            <Icon name={item.icon} size={22} />
             <span class={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
               selectedArchetype.id === item.id ? 'bg-white/20 text-white' : 'bg-[#EAE4D9]/60 text-[#796658]'
             }`}>
@@ -116,8 +117,8 @@
           <span class="text-xs font-bold text-[#796658] uppercase tracking-wider">
             {language === 'tl' ? 'Sakayan at Tawiran' : 'Transit Anchors'}
           </span>
-          <span class="w-8 h-8 rounded-full bg-[#FAF7F2] border border-[#EAE4D9] flex items-center justify-center text-sm">
-            🚐
+          <span class="w-8 h-8 rounded-full bg-[#FAF7F2] border border-[#EAE4D9] flex items-center justify-center">
+            <Icon name="van" size={16} />
           </span>
         </div>
 
@@ -147,8 +148,8 @@
           <span class="text-xs font-bold text-[#796658] uppercase tracking-wider">
             {language === 'tl' ? 'Katabing Tindahan' : 'Competitor Nodes'}
           </span>
-          <span class="w-8 h-8 rounded-full bg-[#FAF7F2] border border-[#EAE4D9] flex items-center justify-center text-sm">
-            🏪
+          <span class="w-8 h-8 rounded-full bg-[#FAF7F2] border border-[#EAE4D9] flex items-center justify-center">
+            <Icon name="store" size={16} />
           </span>
         </div>
 

@@ -8,6 +8,8 @@
   import HotspotDetailCard from './HotspotDetailCard.svelte';
   import HotspotConfigModal from './HotspotConfigModal.svelte';
   import L from 'leaflet';
+  import Icon from '$lib/components/Icon.svelte';
+  import { getIconSvg } from '$lib/icons';
 
   export let session: UserSession;
   export let vendors: TaggedVendor[];
@@ -196,7 +198,7 @@
         <div class="w-7 h-7 rounded-full ${
           isDarkMode ? 'bg-[#F59E0B] text-[#1A120B]' : 'bg-[#4A2E1B] text-white'
         } border-2 border-white shadow-lg flex items-center justify-center text-xs font-black">
-          ${session.role === 'vendor' ? '🛒' : '👤'}
+          ${session.role === 'vendor' ? getIconSvg('cart', { size: 14, color: isDarkMode ? '#1A120B' : '#FFFFFF' }) : getIconSvg('user', { size: 14, color: isDarkMode ? '#1A120B' : '#FFFFFF' })}
         </div>
       </div>
     `;
@@ -235,7 +237,7 @@
           } ${
             isSelected ? (isDarkMode ? '!border-[#F59E0B] shadow-xl scale-110' : '!border-[#4A2E1B] shadow-xl scale-110') : 'shadow-md'
           } flex items-center justify-center text-xl">
-            ${vendor.icon}
+            ${getIconSvg(vendor.icon, { size: 22, color: isDarkMode ? '#FAF7F2' : '#4A2E1B' })}
           </div>
         </div>
       `;
@@ -297,7 +299,7 @@
           <div class="relative flex items-center justify-center cursor-pointer transition-transform hover:scale-110 active:scale-95 group">
             ${hotspot.potentialLevel === 'high' ? `<span class="absolute w-12 h-12 rounded-full animate-ping opacity-35" style="background-color: ${lvlMeta.mapFill}"></span>` : ''}
             <div class="px-2.5 py-1 rounded-xl shadow-lg flex items-center gap-1.5 border font-black text-xs transition-transform ${isSelected ? 'scale-110 ring-2 ring-white dark:ring-black' : ''}" style="background-color: ${isDarkMode ? '#271A10' : '#FFFFFF'}; border-color: ${lvlMeta.mapStroke}; color: ${isDarkMode ? '#FAF7F2' : '#4A2E1B'};">
-              <span class="text-sm">${catMeta.icon}</span>
+              <span class="text-sm">${getIconSvg(catMeta.icon, { size: 14, color: isDarkMode ? '#FAF7F2' : '#4A2E1B' })}</span>
               <span class="text-[10px] px-1.5 py-0.5 rounded-full text-white font-extrabold" style="background-color: ${lvlMeta.mapFill}">
                 ${hotspot.opportunityScore}
               </span>
@@ -346,13 +348,13 @@
           <div class="px-2.5 py-1 rounded-full ${
             isDarkMode ? 'bg-[#271A10] text-[#F59E0B] border-[#F59E0B]/50' : 'bg-[#4A2E1B] text-[#FAF7F2] border-white'
           } border shadow-lg text-[11px] font-black whitespace-nowrap mb-1 flex items-center gap-1.5 transition-transform group-hover:scale-105">
-            <span>⭐</span>
+            ${getIconSvg('star', { size: 12, color: '#D97706' })}
             <span>${language === 'tl' ? recommendedViabilitySpot.ratingTl : recommendedViabilitySpot.ratingEn}</span>
             <span class="opacity-50">•</span>
             <span class="text-[#D97706] font-extrabold">~${recommendedViabilitySpot.distanceM}m</span>
           </div>
           <div class="w-10 h-10 rounded-2xl bg-[#D97706] text-white border-2 border-white shadow-xl flex items-center justify-center text-lg font-black transition-transform group-hover:scale-110">
-            📍
+            ${getIconSvg('map-pin', { size: 18, color: '#FFFFFF' })}
           </div>
         </div>
       `;
@@ -476,7 +478,7 @@
             }`}
             title={language === 'tl' ? 'Pumunta sa Dashboard ng Tindahan' : 'Vendor Dashboard'}
           >
-            <span>🛒</span>
+            <Icon name="cart" size={14} />
             <span>{language === 'tl' ? 'Tindahan' : 'Stall'}</span>
           </button>
         {/if}
@@ -510,7 +512,10 @@
               : (isDarkMode ? 'bg-[#271A10] text-[#D6C7B2]' : 'bg-[#FAF7F2] text-[#796658]')
           }`}
         >
-          {session.role === 'vendor' ? '🛒 Tindero' : '🥣 Mamimili'}
+          <span class="inline-flex items-center gap-1">
+            <Icon name={session.role === 'vendor' ? 'cart' : 'bowl'} size={12} />
+            {session.role === 'vendor' ? 'Tindero' : 'Mamimili'}
+          </span>
         </div>
 
         <!-- Settings Button (Hosts Theme, Language, Audio, and Role Switch) -->
@@ -526,7 +531,7 @@
             title="Mga Setting"
             aria-label="Settings"
           >
-            ⚙️
+            <Icon name="settings" size={16} />
           </button>
         {/if}
       </div>
@@ -546,7 +551,7 @@
         }`}
         title={language === 'tl' ? 'Ipakita ang Mga Paninda' : 'Show Vendors'}
       >
-        <span class="text-sm">📋</span>
+        <Icon name="clipboard" size={14} />
         <span>{language === 'tl' ? 'Mga Paninda' : 'Vendors'}</span>
         <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-[#D97706] text-white font-black">{filteredVendors.length}</span>
       </button>
@@ -580,7 +585,7 @@
             : (isDarkMode ? 'hover:bg-[#271A10]' : 'hover:bg-[#FAF7F2]')
         }`}
       >
-        <span>🎓</span>
+        <Icon name="school" size={14} />
         <span class="hidden xs:inline">{language === 'tl' ? 'Paaralan' : 'Schools'}</span>
       </button>
 
@@ -593,7 +598,7 @@
             : (isDarkMode ? 'hover:bg-[#271A10]' : 'hover:bg-[#FAF7F2]')
         }`}
       >
-        <span>🏀</span>
+        <Icon name="trophy" size={14} />
         <span class="hidden xs:inline">{language === 'tl' ? 'Basketball' : 'Basketball'}</span>
       </button>
 
@@ -606,7 +611,7 @@
             : (isDarkMode ? 'hover:bg-[#271A10]' : 'hover:bg-[#FAF7F2]')
         }`}
       >
-        <span>🎪</span>
+        <Icon name="tent" size={14} />
         <span class="hidden xs:inline">{language === 'tl' ? 'Barangay' : 'Barangay'}</span>
       </button>
 
@@ -619,7 +624,7 @@
             : (isDarkMode ? 'hover:bg-[#271A10]' : 'hover:bg-[#FAF7F2]')
         }`}
       >
-        <span>🚌</span>
+        <Icon name="bus" size={14} />
         <span class="hidden xs:inline">{language === 'tl' ? 'Sakayan' : 'Commuters'}</span>
       </button>
 
@@ -631,7 +636,7 @@
         class="px-2.5 py-1 rounded-xl text-xs font-black bg-[#D97706]/15 hover:bg-[#D97706]/25 text-[#D97706] transition cursor-pointer flex items-center gap-1 whitespace-nowrap active:scale-95"
         title="Magdagdag ng Event o Skedyul"
       >
-        <span>➕</span>
+        <Icon name="plus" size={14} />
         <span>{language === 'tl' ? 'Mag-ulat' : 'Add'}</span>
       </button>
 
@@ -656,7 +661,7 @@
           : (language === 'tl' ? 'I-on ang Hotspots' : 'Show Hotspots')}
         aria-label="Toggle Hotspots"
       >
-        <span>🔥</span>
+        <Icon name="flame" size={14} />
       </button>
     </div>
 
@@ -721,7 +726,7 @@
               : (isDarkMode ? 'text-[#D6C7B2] hover:bg-[#352317]' : 'text-[#796658] hover:bg-white')
           }`}
         >
-          <span>🛒</span>
+          <Icon name="cart" size={14} />
           <span>{language === 'tl' ? 'Paninda' : 'Vendors'}</span>
           <span class="text-[10px] px-1.5 py-0.2 rounded-full bg-white/20 font-black">{filteredVendors.length}</span>
         </button>
@@ -738,7 +743,7 @@
               : (isDarkMode ? 'text-[#D6C7B2] hover:bg-[#352317]' : 'text-[#796658] hover:bg-white')
           }`}
         >
-          <span>🔥</span>
+          <Icon name="flame" size={14} />
           <span>{language === 'tl' ? 'Hotspots' : 'Hotspots'}</span>
           <span class="text-[10px] px-1.5 py-0.2 rounded-full bg-white/20 font-black">{demandHotspots.length}</span>
         </button>
@@ -772,7 +777,7 @@
                   : (isDarkMode ? 'bg-[#271A10] text-[#FAF7F2] hover:bg-[#352317]' : 'bg-white text-[#4A2E1B] hover:bg-[#FAF7F2]')
               }`}
             >
-              <span>{item.icon}</span>
+              <Icon name={item.icon} size={14} />
               <span>{language === 'tl' ? item.labelTl : item.labelEn}</span>
             </button>
           {/each}
@@ -819,8 +824,8 @@
                       class="w-16 h-16 sm:w-18 sm:h-18 rounded-xl object-cover shadow-xs"
                     />
                   {:else}
-                    <div class="w-16 h-16 rounded-xl bg-[#EAE4D9] dark:bg-[#352317] flex items-center justify-center text-2xl">
-                      {vendor.icon}
+                    <div class="w-16 h-16 rounded-xl bg-[#EAE4D9] dark:bg-[#352317] flex items-center justify-center">
+                      <Icon name={vendor.icon} size={28} />
                     </div>
                   {/if}
 
@@ -889,7 +894,7 @@
                   : (isDarkMode ? 'bg-[#271A10] text-[#FAF7F2]' : 'bg-white text-[#4A2E1B]')
               }`}
             >
-              🎓
+              <Icon name="school" size={14} />
             </button>
             <button
               type="button"
@@ -900,7 +905,7 @@
                   : (isDarkMode ? 'bg-[#271A10] text-[#FAF7F2]' : 'bg-white text-[#4A2E1B]')
               }`}
             >
-              🏀
+              <Icon name="trophy" size={14} />
             </button>
             <button
               type="button"
@@ -911,7 +916,7 @@
                   : (isDarkMode ? 'bg-[#271A10] text-[#FAF7F2]' : 'bg-white text-[#4A2E1B]')
               }`}
             >
-              🎪
+              <Icon name="tent" size={14} />
             </button>
             <button
               type="button"
@@ -922,7 +927,7 @@
                   : (isDarkMode ? 'bg-[#271A10] text-[#FAF7F2]' : 'bg-white text-[#4A2E1B]')
               }`}
             >
-              🚌
+              <Icon name="bus" size={14} />
             </button>
           </div>
 
@@ -954,7 +959,7 @@
             title={isHotspotsVisible ? 'Hide Hotspots' : 'Show Hotspots'}
             aria-label="Toggle Hotspots Layer"
           >
-            🔥
+            <Icon name="flame" size={14} />
           </button>
         </div>
 
@@ -997,8 +1002,8 @@
                   class="w-12 h-12 rounded-xl flex items-center justify-center text-xl shrink-0 border relative"
                   style={`background-color: ${lvl.badgeBg}; border-color: ${lvl.mapStroke};`}
                 >
-                  <span>{cat.icon}</span>
-                  <span class="absolute -top-1 -right-1 text-[10px]">{lvl.iconEmoji}</span>
+                  <Icon name={cat.icon} size={20} />
+                  <span class="absolute -top-1 -right-1"><Icon name={lvl.iconEmoji} size={10} /></span>
                 </div>
 
                 <!-- Hotspot Details -->
@@ -1060,7 +1065,7 @@
     <div class={`absolute top-28 inset-x-4 sm:inset-x-auto sm:right-6 z-40 max-w-md p-4 rounded-2xl shadow-2xl flex items-center gap-3 border animate-bounce ${
       isDarkMode ? 'bg-[#271A10] text-white border-[#F59E0B]/40' : 'bg-[#4A2E1B] text-white border-white/20'
     }`}>
-      <span class="text-2xl">🥣</span>
+      <Icon name="bowl" size={24} />
       <p class="text-xs sm:text-sm font-extrabold">{alertToast}</p>
     </div>
   {/if}
@@ -1078,7 +1083,7 @@
           <div class={`w-12 h-12 rounded-2xl flex items-center justify-center text-2xl border ${
             isDarkMode ? 'bg-[#452B14] text-[#F59E0B] border-[#F59E0B]/30' : 'bg-[#FEF3C7] text-[#D97706] border-[#D97706]/30'
           }`}>
-            {selectedVendor.icon}
+            <Icon name={selectedVendor.icon} size={24} />
           </div>
           <div>
             <div class="flex items-center gap-1.5">

@@ -9,6 +9,7 @@
     HOTSPOT_CATEGORY_META,
     HOTSPOT_LEVEL_META,
   } from '../data/hotspots';
+  import Icon from './Icon.svelte';
 
   export let language: Language = 'tl';
   export let isDarkMode: boolean = false;
@@ -169,7 +170,7 @@
       }`}
     >
       <div class="flex items-center gap-2.5">
-        <span class="text-2xl">🔥</span>
+        <Icon name="flame" size={24} />
         <div>
           <h2 id="modal-title" class="text-base sm:text-lg font-black">
             {language === 'tl' ? 'I-configure ang Demand Hotspots' : 'Configure Demand Hotspots'}
@@ -217,7 +218,7 @@
             : (isDarkMode ? 'text-[#D6C7B2] hover:bg-[#352317]' : 'text-[#796658] hover:bg-[#FAF7F2]')
         }`}
       >
-        <span>🎓</span>
+        <Icon name="school" size={14} />
         <span>{language === 'tl' ? 'Paaralan' : 'School Dismissals'}</span>
       </button>
 
@@ -230,7 +231,7 @@
             : (isDarkMode ? 'text-[#D6C7B2] hover:bg-[#352317]' : 'text-[#796658] hover:bg-[#FAF7F2]')
         }`}
       >
-        <span>🎪</span>
+        <Icon name="tent" size={14} />
         <span>{language === 'tl' ? 'Events & Liga' : 'Events & Games'}</span>
       </button>
 
@@ -243,7 +244,7 @@
             : (isDarkMode ? 'text-[#D6C7B2] hover:bg-[#352317]' : 'text-[#796658] hover:bg-[#FAF7F2]')
         }`}
       >
-        <span>📋</span>
+        <Icon name="clipboard" size={14} />
         <span>{language === 'tl' ? 'Mga Hotspot' : 'Manage List'}</span>
         <span class="text-[10px] px-1.5 py-0.2 rounded-full bg-[#D97706] text-white font-black">{activeHotspots.length}</span>
       </button>
@@ -427,7 +428,7 @@
                     : (isDarkMode ? 'bg-[#271A10] border-[#3D2717] text-[#FAF7F2]' : 'bg-white border-[#EAE4D9] text-[#4A2E1B]')
                 }`}
               >
-                <span class="text-lg">🏀</span>
+                <Icon name="trophy" size={18} />
                 <span>{language === 'tl' ? 'Basketball' : 'Basketball'}</span>
               </button>
 
@@ -440,7 +441,7 @@
                     : (isDarkMode ? 'bg-[#271A10] border-[#3D2717] text-[#FAF7F2]' : 'bg-white border-[#EAE4D9] text-[#4A2E1B]')
                 }`}
               >
-                <span class="text-lg">🎪</span>
+                <Icon name="tent" size={18} />
                 <span>{language === 'tl' ? 'Barangay' : 'Barangay'}</span>
               </button>
 
@@ -453,7 +454,7 @@
                     : (isDarkMode ? 'bg-[#271A10] border-[#3D2717] text-[#FAF7F2]' : 'bg-white border-[#EAE4D9] text-[#4A2E1B]')
                 }`}
               >
-                <span class="text-lg">🚌</span>
+                <Icon name="bus" size={18} />
                 <span>{language === 'tl' ? 'Commuter' : 'Commuters'}</span>
               </button>
             </div>
@@ -638,7 +639,7 @@
                     class="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0 border"
                     style={`background-color: ${lvl.badgeBg}; border-color: ${lvl.mapStroke};`}
                   >
-                    {cat.icon}
+                    <Icon name={cat.icon} size={18} />
                   </div>
 
                   <div class="min-w-0">
@@ -647,7 +648,10 @@
                         class="text-[9px] font-black uppercase px-2 py-0.5 rounded-full"
                         style={`background-color: ${lvl.badgeBg}; color: ${lvl.badgeColor};`}
                       >
-                        {lvl.iconEmoji} {hotspot.opportunityScore}/100
+                        <span class="inline-flex items-center gap-1">
+                          <Icon name={lvl.iconEmoji} size={10} />
+                          {hotspot.opportunityScore}/100
+                        </span>
                       </span>
                       {#if hotspot.isUserAdded}
                         <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-[#D97706]/15 text-[#D97706]">

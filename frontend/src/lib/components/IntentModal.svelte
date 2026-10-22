@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Language, UserRole } from '../types';
+  import Icon from './Icon.svelte';
 
   export let language: Language = 'tl';
   export let onSelect: (role: UserRole) => void;
@@ -29,8 +30,8 @@
         on:click={() => onSelect('buyer')}
         class="w-full p-5 rounded-3xl border-2 border-[#EAE4D9] hover:border-[#D97706] bg-[#FAF7F2] hover:bg-white transition-all text-left flex items-center gap-4 cursor-pointer active:scale-98 shadow-xs"
       >
-        <div class="w-14 h-14 rounded-2xl bg-[#FEF3C7] text-[#D97706] flex items-center justify-center text-3xl shrink-0">
-          🥣
+        <div class="w-14 h-14 rounded-2xl bg-[#FEF3C7] text-[#D97706] flex items-center justify-center shrink-0">
+          <Icon name="bowl" size={28} />
         </div>
         <div>
           <h3 class="text-lg font-black text-[#4A2E1B]">
@@ -48,8 +49,8 @@
         on:click={() => onSelect('vendor')}
         class="w-full p-5 rounded-3xl border-2 border-[#EAE4D9] hover:border-[#4A2E1B] bg-[#FAF7F2] hover:bg-white transition-all text-left flex items-center gap-4 cursor-pointer active:scale-98 shadow-xs"
       >
-        <div class="w-14 h-14 rounded-2xl bg-[#4A2E1B] text-[#FAF7F2] flex items-center justify-center text-3xl shrink-0">
-          🛒
+        <div class="w-14 h-14 rounded-2xl bg-[#4A2E1B] text-[#FAF7F2] flex items-center justify-center shrink-0">
+          <Icon name="cart" size={28} />
         </div>
         <div>
           <h3 class="text-lg font-black text-[#4A2E1B]">

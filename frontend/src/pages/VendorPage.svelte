@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Language, ProductType, UserSession, BusinessArchetype, DemandHotspot } from '../lib/types';
   import Logo from '../lib/components/Logo.svelte';
+  import Icon from '$lib/components/Icon.svelte';
   import { BUSINESS_ARCHETYPES, generateAnchorsAround, generateCompetitorsAround } from '../lib/data/spots';
   import { getAllDemandHotspots, HOTSPOT_CATEGORY_META, HOTSPOT_LEVEL_META } from '../lib/data/hotspots';
   import { evaluateLocationViability } from '../lib/gravity';
@@ -39,10 +40,10 @@
   );
 
   const PRODUCTS = [
-    { name: 'Taho', icon: '🥣' },
-    { name: 'Siomai', icon: '🥡' },
-    { name: 'Balut', icon: '🥚' },
-    { name: 'Kape / Merienda', icon: '⭐' },
+    { name: 'Taho', icon: 'bowl' },
+    { name: 'Siomai', icon: 'siomai' },
+    { name: 'Balut', icon: 'balut' },
+    { name: 'Kape / Merienda', icon: 'star' },
   ];
 
   function setProduct(prod: string) {
@@ -78,7 +79,7 @@
             : 'bg-white border-[#EAE4D9] text-[#4A2E1B] hover:bg-[#FAF7F2]'
         }`}
       >
-        <span>🗺️</span>
+        <span><Icon name="map" size={16} /></span>
         <span>{language === 'tl' ? 'Tingnan sa Mapa' : 'View on Map'}</span>
       </button>
 
@@ -174,7 +175,7 @@
           on:click={() => onNavigate('map')}
           class="px-4 py-2.5 rounded-xl text-xs font-black bg-[#D97706] hover:bg-[#B45309] text-white shadow-sm transition flex items-center justify-center gap-1.5 cursor-pointer shrink-0 active:scale-95"
         >
-          <span>🗺️</span>
+          <span><Icon name="map" size={16} /></span>
           <span>{language === 'tl' ? 'Tingnan sa Mapa' : 'View on Map'}</span>
         </button>
       </div>
@@ -301,7 +302,7 @@
                 : (isDarkMode ? 'bg-[#352317] text-white border-[#3D2717]' : 'bg-[#FAF7F2] text-[#4A2E1B] border-[#EAE4D9]')
             }`}
           >
-            <span>{p.icon}</span>
+            <Icon name={p.icon} size={16} />
             <span>{p.name}</span>
           </button>
         {/each}
@@ -349,8 +350,8 @@
               class="w-11 h-11 rounded-xl flex items-center justify-center text-xl shrink-0 border relative"
               style={`background-color: ${lvl.badgeBg}; border-color: ${lvl.mapStroke};`}
             >
-              <span>{cat.icon}</span>
-              <span class="absolute -top-1 -right-1 text-[10px]">{lvl.iconEmoji}</span>
+              <Icon name={cat.icon} size={20} />
+              <span class="absolute -top-1 -right-1"><Icon name={lvl.iconEmoji} size={10} /></span>
             </div>
 
             <div class="flex-1 min-w-0">
@@ -395,7 +396,7 @@
             : 'bg-white border-[#EAE4D9] text-[#4A2E1B] hover:bg-[#FAF7F2]'
         }`}
       >
-        <span>🗺️</span>
+        <span><Icon name="map" size={16} /></span>
         <span>{language === 'tl' ? 'Tingnan ang Lahat ng Hotspots sa Mapa' : 'View All Hotspots on Map'}</span>
         <span>→</span>
       </button>

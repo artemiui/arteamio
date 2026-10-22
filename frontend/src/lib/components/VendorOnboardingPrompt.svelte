@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Language, ProductType } from '../types';
+  import Icon from './Icon.svelte';
 
   export let language: Language = 'tl';
   export let onConfirmVendor: (product: string, productType: ProductType, photoUrl?: string) => void;
@@ -11,10 +12,10 @@
   let isCameraActive: boolean = false;
 
   const PRODUCT_OPTIONS: { id: ProductType; label: string; icon: string }[] = [
-    { id: 'taho', label: 'Taho', icon: '🥣' },
-    { id: 'siomai', label: 'Siomai', icon: '🥡' },
-    { id: 'balut', label: 'Balut', icon: '🥚' },
-    { id: 'other', label: 'Other', icon: '⭐' },
+    { id: 'taho', label: 'Taho', icon: 'bowl' },
+    { id: 'siomai', label: 'Siomai', icon: 'siomai' },
+    { id: 'balut', label: 'Balut', icon: 'egg' },
+    { id: 'other', label: 'Other', icon: 'star' },
   ];
 
   function handlePhotoUpload(e: Event) {
@@ -48,7 +49,7 @@
   <div class="bg-white w-full max-w-lg rounded-[36px] border border-[#EAE4D9] shadow-2xl p-6 sm:p-8 space-y-6 text-[#4A2E1B] my-auto">
     <!-- Header -->
     <div class="text-center space-y-1">
-      <span class="text-3xl">🛒</span>
+      <Icon name="cart" size={32} />
       <h2 class="text-2xl sm:text-3xl font-black text-[#4A2E1B] tracking-tight">
         {language === 'tl' ? 'Ano ang Iyong Binebenta?' : 'What Are You Selling?'}
       </h2>
@@ -75,7 +76,7 @@
                 : 'bg-[#FAF7F2] text-[#4A2E1B] border-[#EAE4D9] hover:bg-white'
             }`}
           >
-            <span class="text-2xl">{item.icon}</span>
+            <Icon name={item.icon} size={22} />
             <span>{item.label}</span>
           </button>
         {/each}
