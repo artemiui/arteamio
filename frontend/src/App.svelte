@@ -17,6 +17,8 @@
   import VendorOnboardingPrompt from './lib/components/VendorOnboardingPrompt.svelte';
   import RoleSwitchModal from './lib/components/RoleSwitchModal.svelte';
 
+  const SESSION_KEY = 'pwestoradar_session';
+
   // Global App States
   let currentRoute: PageRoute = 'landing';
   let language: Language = 'tl';
@@ -47,7 +49,7 @@
     }
 
     // 2. Load Session from LocalStorage
-    const savedSession = localStorage.getItem('pwestoradar_session');
+    const savedSession = localStorage.getItem(SESSION_KEY);
     if (savedSession) {
       try {
         const parsed: UserSession = JSON.parse(savedSession);
@@ -63,6 +65,20 @@
       }
     }
   });
+
+  // Save the session without ever throwing. A large base64 photo can exceed the
+  // localStorage quota; if so, retry without the photo so the app keeps working.
+  function persistSession(s: UserSession) {
+    try {
+      localStorage.setItem(SESSION_KEY, JSON.stringify(s));
+    } catch {
+      try {
+        localStorage.setItem(SESSION_KEY, JSON.stringify({ ...s, verifiedPhoto: undefined }));
+      } catch {
+        /* storage unavailable: keep the in-memory session only */
+      }
+    }
+  }
 
   function setDarkMode(enabled: boolean) {
     isDarkMode = enabled;
@@ -92,6 +108,13 @@
   }
 
   function handleSelectRole(role: UserRole) {
+    // An existing session of a different role must go through RoleSwitchModal,
+    // so product/photo are never wiped or re-created without confirmation.
+    if (session && session.role !== role) {
+      showRoleSwitchModal = true;
+      return;
+    }
+
     if (role === 'buyer') {
       showBuyerPrompt = true;
       showVendorPrompt = false;
@@ -102,6 +125,13 @@
   }
 
   function handleConfirmBuyerLocation(locationName: string, lat: number, lng: number) {
+    // A vendor must confirm the role switch instead of being silently overwritten.
+    if (session && session.role === 'vendor') {
+      showBuyerPrompt = false;
+      showRoleSwitchModal = true;
+      return;
+    }
+
     const newSession: UserSession = {
       role: 'buyer',
       locationName,
@@ -135,7 +165,7 @@
     activeVendors = generateTaggedVendorsAround(newSession.lat, newSession.lng);
 
     if (typeof window !== 'undefined') {
-      localStorage.setItem('pwestoradar_session', JSON.stringify(newSession));
+      persistSession(newSession);
     }
 
     router.navigate(targetRoute);
@@ -169,11 +199,11 @@
   function handleUpdateVendorProduct(product: string) {
     if (!session) return;
     session = { ...session, product };
-    localStorage.setItem('pwestoradar_session', JSON.stringify(session));
+    persistSession(session);
   }
 
   function handleResetSession() {
-    localStorage.removeItem('pwestoradar_session');
+    localStorage.removeItem(SESSION_KEY);
     session = null;
     showBuyerPrompt = false;
     showVendorPrompt = false;
@@ -210,7 +240,6 @@
         vendors={activeVendors}
         {language}
         {isDarkMode}
-        onToggleDarkMode={handleToggleDarkMode}
         onSwitchRole={handleRequestSwitchRole}
         onResetSession={handleResetSession}
         onNavigate={(r) => router.navigate(r as PageRoute)}
@@ -243,7 +272,6 @@
         vendors={activeVendors}
         {language}
         {isDarkMode}
-        onToggleDarkMode={handleToggleDarkMode}
         onSwitchRole={handleRequestSwitchRole}
         onResetSession={handleResetSession}
         onNavigate={(r) => router.navigate(r as PageRoute)}
