@@ -56,6 +56,9 @@
 
   let viabilityMarker: L.Marker | null = null;
   let viabilityLine: L.Polyline | null = null;
+  let targetedRoute: { lat: number; lng: number; name?: string } | null = null;
+  let targetedRouteLine: L.Polyline | null = null;
+  let targetedRouteMarker: L.Marker | null = null;
 
   // React to external session coordinates update (e.g. searching OSM location)
   let currentSessionLat = session.lat;
@@ -138,6 +141,8 @@
       map.off('moveend', handleMapMoveEnd);
       if (viabilityMarker) map.removeLayer(viabilityMarker);
       if (viabilityLine) map.removeLayer(viabilityLine);
+      if (targetedRouteLine) map.removeLayer(targetedRouteLine);
+      if (targetedRouteMarker) map.removeLayer(targetedRouteMarker);
       hotspotCircles.forEach((c) => map?.removeLayer(c));
       hotspotMarkers.forEach((m) => map?.removeLayer(m));
       map.remove();
@@ -210,9 +215,31 @@
   }
 
   function handleTargetLocation(lat: number, lng: number) {
-    if (map) {
-      map.flyTo([lat, lng], 17, { duration: 0.6 });
+    if (targetedRoute && targetedRoute.lat === lat && targetedRoute.lng === lng) {
+      // Toggle off if already targeted
+      targetedRoute = null;
+    } else {
+      targetedRoute = {
+        lat,
+        lng,
+        name: selectedHotspot ? selectedHotspot.name : 'Target Hotspot',
+      };
     }
+    renderMapElements();
+    if (map && targetedRoute) {
+      map.fitBounds(
+        [
+          [session.lat, session.lng],
+          [lat, lng],
+        ],
+        { padding: [90, 90], maxZoom: 17 }
+      );
+    }
+  }
+
+  function handleClearRoute() {
+    targetedRoute = null;
+    renderMapElements();
   }
 
   $: filteredVendors = activeFilter
@@ -539,7 +566,7 @@
       </div>
 
       <!-- Center: Location Selector (Centered on Topbar) -->
-      <div class="absolute inset-x-0 mx-auto max-w-xs sm:max-w-md flex items-center justify-center pointer-events-none px-4">
+      <div class="hidden md:flex absolute inset-x-0 mx-auto max-w-xs sm:max-w-md items-center justify-center pointer-events-none px-4">
         <button
           type="button"
           on:click={() => (onNavigateToSearch ? onNavigateToSearch() : handleRecenterGPS())}
@@ -626,6 +653,36 @@
       </div>
     </div>
   </header>
+
+
+  <!-- ACTIVE ROUTE NAVIGATION BANNER (WHEN VENDOR TARGETS A HOTSPOT) -->
+  {#if targetedRoute}
+    {@const routeDist = calculateDistanceM(session.lat, session.lng, targetedRoute.lat, targetedRoute.lng)}
+    {@const routeEta = Math.max(1, Math.round(routeDist / 67))}
+    <div class="absolute top-20 sm:top-24 left-1/2 -translate-x-1/2 z-30 pointer-events-auto animate-fade-in w-full max-w-sm px-4">
+      <div class={`p-3 rounded-2xl shadow-2xl border flex items-center justify-between gap-3 ${
+        isDarkMode ? 'bg-[#271A10]/95 border-[#F59E0B]/50 text-white' : 'bg-white/95 border-[#EAE4D9] text-[#4A2E1B]'
+      }`}>
+        <div class="flex items-center gap-2.5 min-w-0">
+          <span class="text-xl shrink-0">🎯</span>
+          <div class="min-w-0">
+            <h4 class="text-xs font-black truncate">{targetedRoute.name || (language === 'tl' ? 'Puntiryang Hotspot' : 'Target Hotspot')}</h4>
+            <p class="text-[11px] font-bold text-[#D97706]">
+              ~{routeDist}m • ~{routeEta} {language === 'tl' ? 'min lakad' : 'min walk'}
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          on:click={handleClearRoute}
+          class="px-3 py-1.5 rounded-xl bg-red-500/15 hover:bg-red-500/25 text-red-500 text-xs font-black transition cursor-pointer shrink-0"
+          title="Alisin ang Ruta"
+        >
+          ✕ {language === 'tl' ? 'Alisin' : 'Clear'}
+        </button>
+      </div>
+    </div>
+  {/if}
 
   <!-- OVERLAID MAP CONTROLS: MGA PANINDA OVERLAID DIRECTLY ON MAP (HOTSPOTS BUTTON REMOVED) -->
   {#if !isVendorListOpen}
