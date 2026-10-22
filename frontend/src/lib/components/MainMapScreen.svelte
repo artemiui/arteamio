@@ -639,14 +639,14 @@
 
   <!-- FLOATING DEMAND HOTSPOT FILTER BAR (WITH TEXTLESS HOTSPOTS TOGGLE NEXT TO MAG ULAT) -->
   <div
-    class={`absolute bottom-20 left-3 sm:bottom-auto sm:top-22 sm:left-1/2 sm:-translate-x-1/2 sm:inset-x-auto z-20 flex flex-col sm:flex-row items-start sm:items-center justify-start sm:justify-center gap-1.5 p-1.5 rounded-2xl backdrop-blur-md shadow-lg border overflow-y-auto sm:overflow-y-visible overflow-x-hidden sm:overflow-x-auto no-scrollbar max-h-[60vh] sm:max-h-none sm:max-w-[95vw] pointer-events-auto transition-colors animate-fade-in ${
+    class={`absolute bottom-20 left-3 right-auto sm:bottom-auto sm:top-22 sm:left-1/2 sm:-translate-x-1/2 sm:inset-x-auto z-20 flex flex-col sm:flex-row items-stretch sm:items-center justify-start sm:justify-center gap-1 p-1.5 rounded-2xl backdrop-blur-md shadow-lg border overflow-visible sm:overflow-x-auto no-scrollbar sm:max-w-[95vw] w-max max-w-[calc(100vw-1.5rem)] pointer-events-auto transition-colors animate-fade-in ${
       isDarkMode ? 'bg-[#1A120B]/95 border-[#3D2717] text-[#FAF7F2]' : 'bg-white/95 border-[#EAE4D9] text-[#4A2E1B]'
     }`}
   >
       <button
         type="button"
         on:click={() => (activeHotspotCategory = 'all')}
-        class={`px-3 py-1 rounded-xl text-xs font-black transition cursor-pointer whitespace-nowrap ${
+        class={`px-3 py-2 sm:py-1 rounded-xl text-xs font-black transition cursor-pointer whitespace-nowrap text-center min-h-11 sm:min-h-0 ${
           activeHotspotCategory === 'all'
             ? 'bg-[#EF4444] text-white shadow-xs'
             : (isDarkMode ? 'hover:bg-[#271A10]' : 'hover:bg-[#FAF7F2]')
@@ -655,101 +655,109 @@
         {language === 'tl' ? 'Lahat ng Hotspot' : 'All Hotspots'}
       </button>
 
-      <button
-        type="button"
-        on:click={() => (activeHotspotCategory = 'school')}
-        class={`px-2.5 py-1 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1 whitespace-nowrap ${
-          activeHotspotCategory === 'school'
-            ? 'bg-[#2563EB] text-white shadow-xs'
-            : (isDarkMode ? 'hover:bg-[#271A10]' : 'hover:bg-[#FAF7F2]')
-        }`}
-      >
-        <Icon name="school" size={14} />
-        <span class="hidden xs:inline">{language === 'tl' ? 'Paaralan' : 'Schools'}</span>
-      </button>
-
-      <button
-        type="button"
-        on:click={() => (activeHotspotCategory = 'basketball')}
-        class={`px-2.5 py-1 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1 whitespace-nowrap ${
-          activeHotspotCategory === 'basketball'
-            ? 'bg-[#EA580C] text-white shadow-xs'
-            : (isDarkMode ? 'hover:bg-[#271A10]' : 'hover:bg-[#FAF7F2]')
-        }`}
-      >
-        <Icon name="trophy" size={14} />
-        <span class="hidden xs:inline">{language === 'tl' ? 'Basketball' : 'Basketball'}</span>
-      </button>
-
-      <button
-        type="button"
-        on:click={() => (activeHotspotCategory = 'barangay')}
-        class={`px-2.5 py-1 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1 whitespace-nowrap ${
-          activeHotspotCategory === 'barangay'
-            ? 'bg-[#059669] text-white shadow-xs'
-            : (isDarkMode ? 'hover:bg-[#271A10]' : 'hover:bg-[#FAF7F2]')
-        }`}
-      >
-        <Icon name="tent" size={14} />
-        <span class="hidden xs:inline">{language === 'tl' ? 'Barangay' : 'Barangay'}</span>
-      </button>
-
-      <button
-        type="button"
-        on:click={() => (activeHotspotCategory = 'commuter')}
-        class={`px-2.5 py-1 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1 whitespace-nowrap ${
-          activeHotspotCategory === 'commuter'
-            ? 'bg-[#7C3AED] text-white shadow-xs'
-            : (isDarkMode ? 'hover:bg-[#271A10]' : 'hover:bg-[#FAF7F2]')
-        }`}
-      >
-        <Icon name="bus" size={14} />
-        <span class="hidden xs:inline">{language === 'tl' ? 'Sakayan' : 'Commuters'}</span>
-      </button>
-
-      <div class="w-full sm:w-[1px] h-[1px] sm:h-4 bg-black/10 dark:bg-white/10 my-0.5 sm:my-0 sm:mx-0.5"></div>
-
-      <button
-        type="button"
-        on:click={() => (showHotspotConfigModal = true)}
-        class="px-2.5 py-1 rounded-xl text-xs font-black bg-[#D97706]/15 hover:bg-[#D97706]/25 text-[#D97706] transition cursor-pointer flex items-center gap-1 whitespace-nowrap active:scale-95"
-        title="Magdagdag ng Event o Skedyul"
-      >
-        <Icon name="plus" size={14} />
-        <span>{language === 'tl' ? 'Mag-ulat' : 'Add'}</span>
-      </button>
-
-      <!-- Hotspots Toggle Switch -->
-      <button
-        type="button"
-        role="switch"
-        aria-checked={isHotspotsVisible}
-        on:click={() => {
-          isHotspotsVisible = !isHotspotsVisible;
-          if (isHotspotsVisible && demandHotspots.length === 0) {
-            reloadHotspots();
-          }
-        }}
-        class={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none shadow-xs active:scale-95 ${
-          isHotspotsVisible
-            ? 'bg-[#EF4444]'
-            : (isDarkMode ? 'bg-[#352317]' : 'bg-[#EAE4D9]')
-        }`}
-        title={isHotspotsVisible
-          ? (language === 'tl' ? 'I-off ang Hotspots' : 'Turn off hotspots')
-          : (language === 'tl' ? 'I-on ang Hotspots' : 'Turn on hotspots')}
-        aria-label={isHotspotsVisible
-          ? (language === 'tl' ? 'I-off ang Hotspots' : 'Turn off hotspots')
-          : (language === 'tl' ? 'I-on ang Hotspots' : 'Turn on hotspots')}
-      >
-        <span
-          class={`pointer-events-none inline-flex h-5 w-5 transform items-center justify-center rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-            isHotspotsVisible ? 'translate-x-5 text-[#EF4444]' : 'translate-x-0 text-[#796658]'
+      <div class="grid grid-cols-4 w-full gap-1 sm:contents">
+        <button
+          type="button"
+          on:click={() => (activeHotspotCategory = 'school')}
+          class={`px-2.5 py-2 sm:py-1 rounded-xl text-xs font-black transition cursor-pointer flex items-center justify-center gap-1 whitespace-nowrap min-h-11 sm:min-h-0 ${
+            activeHotspotCategory === 'school'
+              ? 'bg-[#2563EB] text-white shadow-xs'
+              : (isDarkMode ? 'hover:bg-[#271A10]' : 'hover:bg-[#FAF7F2]')
           }`}
+          aria-label={language === 'tl' ? 'Paaralan' : 'Schools'}
         >
-          <Icon name="flame" size={12} strokeWidth={2.5} />
-        </span>
-      </button>
+          <Icon name="school" size={14} />
+          <span class="hidden sm:inline">{language === 'tl' ? 'Paaralan' : 'Schools'}</span>
+        </button>
+
+        <button
+          type="button"
+          on:click={() => (activeHotspotCategory = 'basketball')}
+          class={`px-2.5 py-2 sm:py-1 rounded-xl text-xs font-black transition cursor-pointer flex items-center justify-center gap-1 whitespace-nowrap min-h-11 sm:min-h-0 ${
+            activeHotspotCategory === 'basketball'
+              ? 'bg-[#EA580C] text-white shadow-xs'
+              : (isDarkMode ? 'hover:bg-[#271A10]' : 'hover:bg-[#FAF7F2]')
+          }`}
+          aria-label={language === 'tl' ? 'Basketball' : 'Basketball'}
+        >
+          <Icon name="trophy" size={14} />
+          <span class="hidden sm:inline">{language === 'tl' ? 'Basketball' : 'Basketball'}</span>
+        </button>
+
+        <button
+          type="button"
+          on:click={() => (activeHotspotCategory = 'barangay')}
+          class={`px-2.5 py-2 sm:py-1 rounded-xl text-xs font-black transition cursor-pointer flex items-center justify-center gap-1 whitespace-nowrap min-h-11 sm:min-h-0 ${
+            activeHotspotCategory === 'barangay'
+              ? 'bg-[#059669] text-white shadow-xs'
+              : (isDarkMode ? 'hover:bg-[#271A10]' : 'hover:bg-[#FAF7F2]')
+          }`}
+          aria-label={language === 'tl' ? 'Barangay' : 'Barangay'}
+        >
+          <Icon name="tent" size={14} />
+          <span class="hidden sm:inline">{language === 'tl' ? 'Barangay' : 'Barangay'}</span>
+        </button>
+
+        <button
+          type="button"
+          on:click={() => (activeHotspotCategory = 'commuter')}
+          class={`px-2.5 py-2 sm:py-1 rounded-xl text-xs font-black transition cursor-pointer flex items-center justify-center gap-1 whitespace-nowrap min-h-11 sm:min-h-0 ${
+            activeHotspotCategory === 'commuter'
+              ? 'bg-[#7C3AED] text-white shadow-xs'
+              : (isDarkMode ? 'hover:bg-[#271A10]' : 'hover:bg-[#FAF7F2]')
+          }`}
+          aria-label={language === 'tl' ? 'Sakayan' : 'Commuters'}
+        >
+          <Icon name="bus" size={14} />
+          <span class="hidden sm:inline">{language === 'tl' ? 'Sakayan' : 'Commuters'}</span>
+        </button>
+      </div>
+
+      <div class="w-full sm:w-[1px] h-px sm:h-4 bg-black/10 dark:bg-white/10 my-0.5 sm:my-0 sm:mx-0.5"></div>
+
+      <div class="flex w-full sm:contents items-center justify-between gap-1.5">
+        <button
+          type="button"
+          on:click={() => (showHotspotConfigModal = true)}
+          class="px-2.5 py-2 sm:py-1 rounded-xl text-xs font-black bg-[#D97706]/15 hover:bg-[#D97706]/25 text-[#D97706] transition cursor-pointer flex items-center justify-center gap-1 whitespace-nowrap active:scale-95 min-h-11 sm:min-h-0 flex-1 sm:flex-none"
+          title="Magdagdag ng Event o Skedyul"
+        >
+          <Icon name="plus" size={14} />
+          <span>{language === 'tl' ? 'Mag-ulat' : 'Add'}</span>
+        </button>
+
+        <!-- Hotspots Toggle Switch -->
+        <button
+          type="button"
+          role="switch"
+          aria-checked={isHotspotsVisible}
+          on:click={() => {
+            isHotspotsVisible = !isHotspotsVisible;
+            if (isHotspotsVisible && demandHotspots.length === 0) {
+              reloadHotspots();
+            }
+          }}
+          class={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none shadow-xs active:scale-95 ${
+            isHotspotsVisible
+              ? 'bg-[#EF4444]'
+              : (isDarkMode ? 'bg-[#352317]' : 'bg-[#EAE4D9]')
+          }`}
+          title={isHotspotsVisible
+            ? (language === 'tl' ? 'I-off ang Hotspots' : 'Turn off hotspots')
+            : (language === 'tl' ? 'I-on ang Hotspots' : 'Turn on hotspots')}
+          aria-label={isHotspotsVisible
+            ? (language === 'tl' ? 'I-off ang Hotspots' : 'Turn off hotspots')
+            : (language === 'tl' ? 'I-on ang Hotspots' : 'Turn on hotspots')}
+        >
+          <span
+            class={`pointer-events-none inline-flex h-5 w-5 transform items-center justify-center rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+              isHotspotsVisible ? 'translate-x-5 text-[#EF4444]' : 'translate-x-0 text-[#796658]'
+            }`}
+          >
+            <Icon name="flame" size={12} strokeWidth={2.5} />
+          </span>
+        </button>
+      </div>
     </div>
 
   <!-- TOGGLEABLE MOBILE SIDEBAR / FLOATING DESKTOP PANEL -->
