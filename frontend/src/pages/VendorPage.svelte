@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
+  import { evaluateViabilityOnBackend } from '../lib/api';
   import type { Language, ProductType, UserSession, BusinessArchetype, DemandHotspot } from '../lib/types';
   import Logo from '../lib/components/Logo.svelte';
   import Icon from '$lib/components/Icon.svelte';
@@ -30,6 +32,18 @@
   let competitors = generateCompetitorsAround(session.lat, session.lng);
   let selectedArchetype: BusinessArchetype =
     BUSINESS_ARCHETYPES.find((a) => a.id === session.product?.toLowerCase()) || BUSINESS_ARCHETYPES[2]; // default Taho
+
+
+  onMount(async () => {
+    try {
+      const backendRes = await evaluateViabilityOnBackend(session.lat, session.lng, session.product || 'taho');
+      if (backendRes) {
+        viability = backendRes;
+      }
+    } catch {
+      // keep client-side viability
+    }
+  });
 
   $: viability = evaluateLocationViability(
     session.lat,
