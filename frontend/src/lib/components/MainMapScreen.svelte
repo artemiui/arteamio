@@ -54,10 +54,13 @@
   let selectedArchetype = BUSINESS_ARCHETYPES.find((a) => a.id === session.product?.toLowerCase()) || BUSINESS_ARCHETYPES[2];
   $: viability = evaluateLocationViability(session.lat, session.lng, selectedArchetype, anchors, competitors);
 
-  let viabilityMarker: L.Marker | null = null;
+    let viabilityMarker: L.Marker | null = null;
   let viabilityLine: L.Polyline | null = null;
   let targetedRoute: { lat: number; lng: number; name?: string } | null = null;
+  let targetedRouteDistanceM: number = 0;
+  let targetedRouteEtaMins: number = 0;
   let targetedRouteLine: L.Polyline | null = null;
+  let targetedRouteGlow: L.Polyline | null = null;
   let targetedRouteMarker: L.Marker | null = null;
 
   // React to external session coordinates update (e.g. searching OSM location)
@@ -142,6 +145,7 @@
       if (viabilityMarker) map.removeLayer(viabilityMarker);
       if (viabilityLine) map.removeLayer(viabilityLine);
       if (targetedRouteLine) map.removeLayer(targetedRouteLine);
+      if (targetedRouteGlow) map.removeLayer(targetedRouteGlow);
       if (targetedRouteMarker) map.removeLayer(targetedRouteMarker);
       hotspotCircles.forEach((c) => map?.removeLayer(c));
       hotspotMarkers.forEach((m) => map?.removeLayer(m));
@@ -214,19 +218,85 @@
     }
   }
 
+    function drawRoutePolyline(coords: [number, number][]) {
+    if (!map) return;
+    if (targetedRouteGlow) {
+      map.removeLayer(targetedRouteGlow);
+      targetedRouteGlow = null;
+    }
+    if (targetedRouteLine) {
+      map.removeLayer(targetedRouteLine);
+      targetedRouteLine = null;
+    }
+
+    // Outer glow / contrast casing (broad high-contrast line)
+    targetedRouteGlow = L.polyline(coords, {
+      color: isDarkMode ? '#F59E0B' : '#4A2E1B',
+      weight: 8,
+      opacity: 0.35,
+      lineCap: 'round',
+      lineJoin: 'round',
+    }).addTo(map);
+
+    // Vibrant main route path with walking dash pattern
+    targetedRouteLine = L.polyline(coords, {
+      color: '#F59E0B',
+      weight: 5,
+      opacity: 0.95,
+      dashArray: '8, 8',
+      lineCap: 'round',
+      lineJoin: 'round',
+    }).addTo(map);
+  }
+
+  async function fetchAndDrawWalkingRoute(startLat: number, startLng: number, endLat: number, endLng: number) {
+    if (!map) return;
+
+    // 1. Immediately draw direct line so there is zero delay
+    drawRoutePolyline([[startLat, startLng], [endLat, endLng]]);
+
+    // 2. Fetch real street-following walking path from OpenStreetMap OSRM
+    try {
+      const url = `https://router.project-osrm.org/route/v1/walking/${startLng},${startLat};${endLng},${endLat}?overview=full&geometries=geojson`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.routes && data.routes[0]?.geometry?.coordinates) {
+          const coords: [number, number][] = data.routes[0].geometry.coordinates.map(
+            ([lng, lat]: [number, number]) => [lat, lng]
+          );
+          drawRoutePolyline(coords);
+          if (data.routes[0].distance) {
+            targetedRouteDistanceM = Math.round(data.routes[0].distance);
+            targetedRouteEtaMins = Math.max(1, Math.round(data.routes[0].duration / 60));
+          }
+        }
+      }
+    } catch {
+      // Fallback direct line remains visible
+    }
+  }
+
   function handleTargetLocation(lat: number, lng: number) {
     if (targetedRoute && targetedRoute.lat === lat && targetedRoute.lng === lng) {
-      // Toggle off if already targeted
-      targetedRoute = null;
-    } else {
-      targetedRoute = {
-        lat,
-        lng,
-        name: selectedHotspot ? selectedHotspot.name : 'Target Hotspot',
-      };
+      handleClearRoute();
+      return;
     }
+
+    const dist = calculateDistanceM(session.lat, session.lng, lat, lng);
+    const eta = Math.max(1, Math.round(dist / 67));
+
+    targetedRoute = {
+      lat,
+      lng,
+      name: selectedHotspot ? selectedHotspot.name : 'Target Hotspot',
+    };
+    targetedRouteDistanceM = dist;
+    targetedRouteEtaMins = eta;
+
     renderMapElements();
-    if (map && targetedRoute) {
+
+    if (map) {
       map.fitBounds(
         [
           [session.lat, session.lng],
@@ -239,6 +309,20 @@
 
   function handleClearRoute() {
     targetedRoute = null;
+    targetedRouteDistanceM = 0;
+    targetedRouteEtaMins = 0;
+    if (targetedRouteLine && map) {
+      map.removeLayer(targetedRouteLine);
+      targetedRouteLine = null;
+    }
+    if (targetedRouteGlow && map) {
+      map.removeLayer(targetedRouteGlow);
+      targetedRouteGlow = null;
+    }
+    if (targetedRouteMarker && map) {
+      map.removeLayer(targetedRouteMarker);
+      targetedRouteMarker = null;
+    }
     renderMapElements();
   }
 
@@ -250,7 +334,7 @@
     ? demandHotspots
     : demandHotspots.filter((h) => h.category === activeHotspotCategory);
 
-  $: if (map && (filteredVendors || session || isDarkMode || isHotspotsVisible || activeHotspotCategory || demandHotspots || selectedHotspot || recommendedViabilitySpot)) {
+  $: if (map && (filteredVendors || session || isDarkMode || isHotspotsVisible || activeHotspotCategory || demandHotspots || selectedHotspot || recommendedViabilitySpot || targetedRoute)) {
     renderMapElements();
   }
 
@@ -265,6 +349,18 @@
     if (viabilityLine) {
       map.removeLayer(viabilityLine);
       viabilityLine = null;
+    }
+    if (targetedRouteLine) {
+      map.removeLayer(targetedRouteLine);
+      targetedRouteLine = null;
+    }
+    if (targetedRouteGlow) {
+      map.removeLayer(targetedRouteGlow);
+      targetedRouteGlow = null;
+    }
+    if (targetedRouteMarker) {
+      map.removeLayer(targetedRouteMarker);
+      targetedRouteMarker = null;
     }
 
     // 1. Render User's Location Pin (Google Maps Blue Dot / Pin)
@@ -462,6 +558,43 @@
           <div class="text-gray-600">${language === 'tl' ? 'Layo mula sa iyo' : 'Distance from you'}: <strong>~${recommendedViabilitySpot.distanceM} metro</strong></div>
         </div>
       `);
+    }
+
+    // 6. Draw Active Targeted Navigation Route Line & Destination Waypoint Marker
+    if (targetedRoute) {
+      fetchAndDrawWalkingRoute(session.lat, session.lng, targetedRoute.lat, targetedRoute.lng);
+
+      const distM = targetedRouteDistanceM || calculateDistanceM(session.lat, session.lng, targetedRoute.lat, targetedRoute.lng);
+      const etaMins = targetedRouteEtaMins || Math.max(1, Math.round(distM / 67));
+
+      const waypointHtml = `
+        <div class="relative flex flex-col items-center select-none -translate-y-4 cursor-pointer">
+          <div class="px-3 py-1.5 rounded-full ${
+            isDarkMode ? 'bg-[#1A120B] text-white border-2 border-[#F59E0B]' : 'bg-[#4A2E1B] text-white border-2 border-white'
+          } shadow-2xl text-xs font-black whitespace-nowrap mb-1 flex items-center gap-1.5 animate-bounce">
+            <span>🎯</span>
+            <span>${language === 'tl' ? 'Puntiryang Pwesto' : 'Target Spot'}</span>
+            <span class="opacity-50">•</span>
+            <span class="text-[#F59E0B] font-extrabold">~${distM}m (${etaMins} min)</span>
+          </div>
+          <div class="relative flex items-center justify-center">
+            <span class="absolute w-10 h-10 rounded-full bg-[#F59E0B]/50 animate-ping"></span>
+            <div class="w-9 h-9 rounded-full bg-[#F59E0B] text-[#1A120B] border-2 border-white shadow-xl flex items-center justify-center text-base font-black">
+              🏁
+            </div>
+          </div>
+        </div>
+      `;
+
+      targetedRouteMarker = L.marker([targetedRoute.lat, targetedRoute.lng], {
+        icon: L.divIcon({
+          html: waypointHtml,
+          className: 'targeted-route-waypoint',
+          iconSize: [180, 60],
+          iconAnchor: [90, 50],
+        }),
+        zIndexOffset: 1200,
+      }).addTo(map);
     }
   }
 
