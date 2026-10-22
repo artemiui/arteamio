@@ -2,7 +2,7 @@
   import { onMount, onDestroy } from 'svelte';
   import type { DemandHotspot, DemandHotspotCategory, Language, ProductType, TaggedVendor, UserSession } from '../types';
   import { BUSINESS_ARCHETYPES, generateAnchorsAround, generateCompetitorsAround, PRODUCT_LEGEND } from '../data/spots';
-  import { getAllDemandHotspots, getDemandHotspotsForViewport, HOTSPOT_CATEGORY_META, HOTSPOT_LEVEL_META } from '../data/hotspots';
+  import { getAllDemandHotspots, getDemandHotspotsForViewport, getOpportunityRating, HOTSPOT_CATEGORY_META, HOTSPOT_LEVEL_META } from '../data/hotspots';
   import { evaluateLocationViability, calculateDistanceM } from '../gravity';
   import Logo from './Logo.svelte';
   import HotspotDetailCard from './HotspotDetailCard.svelte';
@@ -1033,8 +1033,7 @@
             </div>
           {:else}
             {#each listHotspots as hotspot}
-              {@const lvl = HOTSPOT_LEVEL_META[hotspot.potentialLevel]}
-              {@const cat = HOTSPOT_CATEGORY_META[hotspot.category]}
+              {@const ratingMeta = getOpportunityRating(hotspot.opportunityScore)}
               <div
                 role="button"
                 tabindex="0"
@@ -1053,49 +1052,34 @@
                     map?.flyTo([hotspot.lat, hotspot.lng], 16, { duration: 0.5 });
                   }
                 }}
-                class={`p-3 rounded-2xl cursor-pointer transition-all flex items-start gap-3 shadow-xs active:scale-98 ${
+                class={`p-3.5 rounded-2xl border cursor-pointer transition-all flex items-center gap-3.5 shadow-2xs active:scale-[0.99] ${
                   selectedHotspot?.id === hotspot.id
-                    ? (isDarkMode ? 'bg-[#452B14] ring-2 ring-[#EF4444]' : 'bg-[#FEE2E2] ring-2 ring-[#DC2626]')
-                    : (isDarkMode ? 'bg-[#271A10] hover:bg-[#352317]' : 'bg-[#FAF7F2] hover:bg-[#F3EDE2]')
+                    ? (isDarkMode ? 'bg-[#352317] border-[#F59E0B] ring-1 ring-[#F59E0B]' : 'bg-white border-[#16A34A] ring-1 ring-[#16A34A]')
+                    : (isDarkMode ? 'bg-[#271A10] border-[#3D2717] hover:bg-[#352317]' : 'bg-white border-[#EAE4D9] hover:border-[#D6C7B2]')
                 }`}
               >
-                <!-- Category Icon with Potential Badge -->
-                <div
-                  class="w-12 h-12 rounded-xl flex items-center justify-center text-xl shrink-0 border relative"
-                  style={`background-color: ${lvl.badgeBg}; border-color: ${lvl.mapStroke};`}
-                >
-                  <Icon name={cat.icon} size={20} />
-                  <span class="absolute -top-1 -right-1"><Icon name={lvl.iconEmoji} size={10} /></span>
+                <!-- Left: Prominent Opportunity Rating & Score -->
+                <div class="w-22 shrink-0 flex flex-col items-start justify-center pr-3 border-r border-[#EAE4D9] dark:border-[#3D2717]">
+                  <span class={`text-sm sm:text-base font-black uppercase tracking-tight leading-none ${ratingMeta.textClass}`}>
+                    {ratingMeta.rating}
+                  </span>
+                  <span class={`text-xs font-extrabold mt-1 leading-none ${ratingMeta.textClass}`}>
+                    {hotspot.opportunityScore}/100
+                  </span>
                 </div>
 
-                <!-- Hotspot Details -->
+                <!-- Right: Hotspot Name & Busy Hours -->
                 <div class="flex-1 min-w-0">
-                  <div class="flex items-center justify-between gap-1">
-                    <h4 class="font-black text-xs sm:text-sm truncate">{hotspot.name}</h4>
-                    <span
-                      class="text-[10px] font-black px-1.5 py-0.2 rounded-full shrink-0 text-white"
-                      style={`background-color: ${lvl.mapFill};`}
-                    >
-                      {hotspot.opportunityScore}/100
-                    </span>
-                  </div>
-
-                  <p class={`text-[11px] font-bold mt-0.5 truncate text-[#D97706]`}>
-                    🕒 {hotspot.expectedBusyTime}
+                  <h4 class={`font-bold text-xs sm:text-sm leading-snug truncate ${
+                    isDarkMode ? 'text-[#FAF7F2]' : 'text-[#1F2937]'
+                  }`}>
+                    {hotspot.name}
+                  </h4>
+                  <p class={`text-[11px] sm:text-xs font-medium mt-0.5 truncate ${
+                    isDarkMode ? 'text-[#D6C7B2]' : 'text-[#6B7280]'
+                  }`}>
+                    {hotspot.expectedBusyTime}
                   </p>
-
-                  <p class={`text-[10px] line-clamp-1 mt-1 ${isDarkMode ? 'text-[#D6C7B2]' : 'text-[#796658]'}`}>
-                    {language === 'tl' ? hotspot.explanationTl : hotspot.explanationEn}
-                  </p>
-
-                  <div class="flex items-center justify-between mt-1.5 pt-1 border-t border-black/5 dark:border-white/5 text-[9px]">
-                    <span class="font-bold text-[#D97706]">
-                      👥 {hotspot.estimatedCrowd}
-                    </span>
-                    <span class="opacity-60 truncate">
-                      {hotspot.dataSourceLabel.split('(')[0]}
-                    </span>
-                  </div>
                 </div>
               </div>
             {/each}

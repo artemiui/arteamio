@@ -3,7 +3,7 @@
   import Logo from '../lib/components/Logo.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import { BUSINESS_ARCHETYPES, generateAnchorsAround, generateCompetitorsAround } from '../lib/data/spots';
-  import { getAllDemandHotspots, HOTSPOT_CATEGORY_META, HOTSPOT_LEVEL_META } from '../lib/data/hotspots';
+  import { getAllDemandHotspots, getOpportunityRating } from '../lib/data/hotspots';
   import { evaluateLocationViability } from '../lib/gravity';
   import HotspotConfigModal from '../lib/components/HotspotConfigModal.svelte';
 
@@ -342,76 +342,67 @@
 
 
     <!-- Demand Hotspots Intel Section for Vendors -->
-    <div class={`p-5 sm:p-6 rounded-[28px] shadow-sm space-y-4 ${
-      isDarkMode ? 'bg-[#271A10]' : 'bg-white'
+    <div class={`p-5 sm:p-6 rounded-[28px] shadow-sm space-y-4 border ${
+      isDarkMode ? 'bg-[#271A10] border-[#3D2717]' : 'bg-white border-[#EAE4D9]'
     }`}>
       <div class="flex items-center justify-between flex-wrap gap-2">
         <div>
-          <span class="text-[11px] font-black uppercase tracking-wider text-[#EF4444]">
-            🔥 {language === 'tl' ? 'Mataas na Bentahan' : 'High-Demand Selling Areas'}
+          <span class="text-[11px] font-black uppercase tracking-wider text-[#16A34A] dark:text-[#4ADE80]">
+            {language === 'tl' ? 'HotZones • Mataas na Bentahan' : 'HotZones • Opportunity Dashboard'}
           </span>
-          <h2 class="text-base font-black">
-            {language === 'tl' ? 'Mga Potensyal na Pwesto Ngayon' : 'Upcoming High-Demand Hotspots'}
+          <h2 class="text-base sm:text-lg font-black mt-0.5">
+            {language === 'tl' ? 'Mga Potensyal na Pwesto Ngayon' : 'High-Demand Hotspots'}
           </h2>
-          <p class={`text-[11px] font-medium mt-0.5 ${isDarkMode ? 'text-[#D6C7B2]' : 'text-[#796658]'}`}>
-            {language === 'tl'
-              ? 'Batay sa uwian ng estudyante, palaro sa court, barangay events, at rush hour.'
-              : 'Based on school dismissals, basketball tournaments, civic events, and commuter queues.'}
-          </p>
         </div>
 
         <button
           type="button"
           on:click={() => (showConfigModal = true)}
-          class="px-3 py-1.5 rounded-full text-xs font-black bg-[#D97706]/15 text-[#D97706] hover:bg-[#D97706]/25 transition cursor-pointer flex items-center gap-1 active:scale-95"
+          class="px-3.5 py-2 rounded-xl text-xs font-black bg-[#D97706]/15 text-[#D97706] hover:bg-[#D97706]/25 transition cursor-pointer flex items-center gap-1.5 active:scale-95"
         >
-          <span>➕</span>
-          <span>{language === 'tl' ? 'Mag-ulat ng Event' : 'Add Event / Schedule'}</span>
+          <span>+</span>
+          <span>{language === 'tl' ? 'Mag-ulat ng Event' : 'Add Event'}</span>
         </button>
       </div>
 
       <div class="space-y-2.5">
-        {#each hotspots.slice(0, 3) as h}
-          {@const lvl = HOTSPOT_LEVEL_META[h.potentialLevel]}
-          {@const cat = HOTSPOT_CATEGORY_META[h.category]}
-          <div class={`p-3.5 rounded-2xl border flex items-start gap-3 transition ${
-            isDarkMode ? 'bg-[#1A120B] border-[#3D2717]' : 'bg-[#FAF7F2] border-[#EAE4D9]'
-          }`}>
-            <div
-              class="w-11 h-11 rounded-xl flex items-center justify-center text-xl shrink-0 border relative"
-              style={`background-color: ${lvl.badgeBg}; border-color: ${lvl.mapStroke};`}
-            >
-              <Icon name={cat.icon} size={20} />
-              <span class="absolute -top-1 -right-1"><Icon name={lvl.iconEmoji} size={10} /></span>
+        {#each hotspots as h}
+          {@const ratingMeta = getOpportunityRating(h.opportunityScore)}
+          <div
+            role="button"
+            tabindex="0"
+            on:click={() => onNavigate('map')}
+            on:keydown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') onNavigate('map');
+            }}
+            class={`p-4 rounded-2xl border flex items-center gap-4 transition cursor-pointer active:scale-[0.99] ${
+              isDarkMode
+                ? 'bg-[#1A120B] border-[#3D2717] hover:border-[#4A2E1B]'
+                : 'bg-white border-[#EAE4D9] hover:border-[#D6C7B2] shadow-2xs'
+            }`}
+          >
+            <!-- Left: Prominent Opportunity Rating & Score -->
+            <div class="w-24 sm:w-28 shrink-0 flex flex-col items-start justify-center pr-3 border-r border-[#EAE4D9] dark:border-[#3D2717]">
+              <span class={`text-base sm:text-lg font-black uppercase tracking-tight leading-none ${ratingMeta.textClass}`}>
+                {ratingMeta.rating}
+              </span>
+              <span class={`text-xs sm:text-sm font-extrabold mt-1 leading-none ${ratingMeta.textClass}`}>
+                {h.opportunityScore}/100
+              </span>
             </div>
 
+            <!-- Right: Hotspot Name & Busy Hours -->
             <div class="flex-1 min-w-0">
-              <div class="flex items-center justify-between gap-1">
-                <h4 class="font-black text-xs sm:text-sm truncate">{h.name}</h4>
-                <span
-                  class="text-[10px] font-black px-2 py-0.5 rounded-full text-white shrink-0"
-                  style={`background-color: ${lvl.mapFill};`}
-                >
-                  {h.opportunityScore}/100
-                </span>
-              </div>
-
-              <p class="text-[11px] font-bold text-[#D97706] mt-0.5">
-                🕒 {h.expectedBusyTime}
+              <h4 class={`font-bold text-sm sm:text-base leading-snug truncate ${
+                isDarkMode ? 'text-[#FAF7F2]' : 'text-[#1F2937]'
+              }`}>
+                {h.name}
+              </h4>
+              <p class={`text-xs sm:text-sm font-medium mt-0.5 truncate ${
+                isDarkMode ? 'text-[#D6C7B2]' : 'text-[#6B7280]'
+              }`}>
+                {h.expectedBusyTime}
               </p>
-
-              <p class={`text-[11px] font-medium line-clamp-2 mt-1 leading-snug ${isDarkMode ? 'text-[#D6C7B2]' : 'text-[#5C4D40]'}`}>
-                💡 {language === 'tl' ? h.explanationTl : h.explanationEn}
-              </p>
-
-              <div class="flex items-center justify-between mt-2 pt-1 border-t border-black/5 dark:border-white/5 text-[10px]">
-                <span class="font-bold text-[#D97706]">
-                  👥 {h.estimatedCrowd}
-                </span>
-                <span class="opacity-60 truncate">
-                  📌 {h.dataSourceLabel.split('(')[0]}
-                </span>
-              </div>
             </div>
           </div>
         {/each}
@@ -424,7 +415,7 @@
         class={`w-full py-2.5 rounded-xl text-xs font-black border transition flex items-center justify-center gap-1.5 cursor-pointer ${
           isDarkMode
             ? 'bg-[#352317] border-[#3D2717] text-[#FAF7F2] hover:bg-[#4A2E1B]'
-            : 'bg-white border-[#EAE4D9] text-[#4A2E1B] hover:bg-[#FAF7F2]'
+            : 'bg-[#FAF7F2] border-[#EAE4D9] text-[#4A2E1B] hover:bg-[#F3EDE2]'
         }`}
       >
         <span><Icon name="map" size={16} /></span>

@@ -41,6 +41,7 @@ export const HOTSPOT_CATEGORY_META: Record<
 export const HOTSPOT_LEVEL_META: Record<
   DemandPotentialLevel,
   {
+    ratingLabel: 'GOOD' | 'AVERAGE' | 'LOW';
     labelTl: string;
     labelEn: string;
     badgeColor: string;
@@ -51,30 +52,33 @@ export const HOTSPOT_LEVEL_META: Record<
   }
 > = {
   high: {
-    labelTl: 'Mataas na Potensyal',
-    labelEn: 'High Potential',
-    badgeColor: '#DC2626',
-    badgeBg: 'rgba(239, 68, 68, 0.15)',
-    mapStroke: '#DC2626',
-    mapFill: '#EF4444',
+    ratingLabel: 'GOOD',
+    labelTl: 'GOOD',
+    labelEn: 'GOOD',
+    badgeColor: '#16A34A',
+    badgeBg: 'rgba(22, 163, 74, 0.12)',
+    mapStroke: '#16A34A',
+    mapFill: '#16A34A',
     iconEmoji: 'dot-high',
   },
   medium: {
-    labelTl: 'Katamtamang Potensyal',
-    labelEn: 'Medium Potential',
+    ratingLabel: 'AVERAGE',
+    labelTl: 'AVERAGE',
+    labelEn: 'AVERAGE',
     badgeColor: '#D97706',
-    badgeBg: 'rgba(245, 158, 11, 0.15)',
-    mapStroke: '#EA580C',
-    mapFill: '#F97316',
+    badgeBg: 'rgba(217, 119, 6, 0.12)',
+    mapStroke: '#D97706',
+    mapFill: '#F59E0B',
     iconEmoji: 'dot-medium',
   },
   low: {
-    labelTl: 'Mababang Potensyal',
-    labelEn: 'Low Potential',
-    badgeColor: '#CA8A04',
-    badgeBg: 'rgba(234, 179, 8, 0.15)',
-    mapStroke: '#CA8A04',
-    mapFill: '#EAB308',
+    ratingLabel: 'LOW',
+    labelTl: 'LOW',
+    labelEn: 'LOW',
+    badgeColor: '#DC2626',
+    badgeBg: 'rgba(220, 38, 38, 0.12)',
+    mapStroke: '#DC2626',
+    mapFill: '#DC2626',
     iconEmoji: 'dot-low',
   },
 };
@@ -83,6 +87,41 @@ export function getPotentialLevel(score: number): DemandPotentialLevel {
   if (score >= 80) return 'high';
   if (score >= 50) return 'medium';
   return 'low';
+}
+
+export function getOpportunityRating(score: number): {
+  rating: 'GOOD' | 'AVERAGE' | 'LOW';
+  level: DemandPotentialLevel;
+  textClass: string;
+  bgClass: string;
+  borderClass: string;
+} {
+  const level = getPotentialLevel(score);
+  if (level === 'high') {
+    return {
+      rating: 'GOOD',
+      level,
+      textClass: 'text-green-600 dark:text-green-400',
+      bgClass: 'bg-green-50 dark:bg-green-950/40',
+      borderClass: 'border-green-200 dark:border-green-800/50',
+    };
+  }
+  if (level === 'medium') {
+    return {
+      rating: 'AVERAGE',
+      level,
+      textClass: 'text-amber-600 dark:text-amber-400',
+      bgClass: 'bg-amber-50 dark:bg-amber-950/40',
+      borderClass: 'border-amber-200 dark:border-amber-800/50',
+    };
+  }
+  return {
+    rating: 'LOW',
+    level,
+    textClass: 'text-red-600 dark:text-red-400',
+    bgClass: 'bg-red-50 dark:bg-red-950/40',
+    borderClass: 'border-red-200 dark:border-red-800/50',
+  };
 }
 
 /**

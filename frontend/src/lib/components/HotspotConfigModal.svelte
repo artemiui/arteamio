@@ -6,8 +6,7 @@
     saveCustomHotspot,
     deleteCustomHotspot,
     resetHotspotsToDefault,
-    HOTSPOT_CATEGORY_META,
-    HOTSPOT_LEVEL_META,
+    getOpportunityRating,
   } from '../data/hotspots';
   import Icon from './Icon.svelte';
 
@@ -629,45 +628,32 @@
 
           <div class="space-y-2">
             {#each activeHotspots as hotspot}
-              {@const lvl = HOTSPOT_LEVEL_META[hotspot.potentialLevel]}
-              {@const cat = HOTSPOT_CATEGORY_META[hotspot.category]}
+              {@const ratingMeta = getOpportunityRating(hotspot.opportunityScore)}
               <div
-                class={`p-3 rounded-2xl border flex items-start justify-between gap-3 ${
+                class={`p-3.5 rounded-2xl border flex items-center justify-between gap-3.5 ${
                   isDarkMode ? 'bg-[#271A10] border-[#3D2717]' : 'bg-white border-[#EAE4D9]'
                 }`}
               >
-                <div class="flex items-start gap-2.5 min-w-0">
-                  <div
-                    class="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0 border"
-                    style={`background-color: ${lvl.badgeBg}; border-color: ${lvl.mapStroke};`}
-                  >
-                    <Icon name={cat.icon} size={18} />
+                <div class="flex items-center gap-3.5 min-w-0 flex-1">
+                  <div class="w-22 shrink-0 flex flex-col items-start justify-center pr-3 border-r border-[#EAE4D9] dark:border-[#3D2717]">
+                    <span class={`text-sm font-black uppercase tracking-tight leading-none ${ratingMeta.textClass}`}>
+                      {ratingMeta.rating}
+                    </span>
+                    <span class={`text-xs font-extrabold mt-1 leading-none ${ratingMeta.textClass}`}>
+                      {hotspot.opportunityScore}/100
+                    </span>
                   </div>
 
-                  <div class="min-w-0">
-                    <div class="flex items-center gap-1.5 flex-wrap">
-                      <span
-                        class="text-[9px] font-black uppercase px-2 py-0.5 rounded-full"
-                        style={`background-color: ${lvl.badgeBg}; color: ${lvl.badgeColor};`}
-                      >
-                        <span class="inline-flex items-center gap-1">
-                          <Icon name={lvl.iconEmoji} size={10} />
-                          {hotspot.opportunityScore}/100
-                        </span>
-                      </span>
-                      {#if hotspot.isUserAdded}
-                        <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-[#D97706]/15 text-[#D97706]">
-                          ✓ Inulat Mo
-                        </span>
-                      {/if}
-                    </div>
-
-                    <h4 class="text-xs font-black truncate mt-1">{hotspot.name}</h4>
-                    <p class={`text-[11px] font-semibold truncate ${isDarkMode ? 'text-[#D6C7B2]' : 'text-[#796658]'}`}>
-                      🕒 {hotspot.expectedBusyTime}
-                    </p>
-                    <p class="text-[10px] text-[#D97706] font-medium mt-0.5">
-                      👥 {hotspot.estimatedCrowd}
+                  <div class="min-w-0 flex-1">
+                    <h4 class={`text-xs sm:text-sm font-bold truncate ${
+                      isDarkMode ? 'text-[#FAF7F2]' : 'text-[#1F2937]'
+                    }`}>
+                      {hotspot.name}
+                    </h4>
+                    <p class={`text-[11px] sm:text-xs font-medium mt-0.5 truncate ${
+                      isDarkMode ? 'text-[#D6C7B2]' : 'text-[#6B7280]'
+                    }`}>
+                      {hotspot.expectedBusyTime}
                     </p>
                   </div>
                 </div>
@@ -676,10 +662,10 @@
                   <button
                     type="button"
                     on:click={() => handleDeleteHotspot(hotspot.id)}
-                    class="w-7 h-7 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-500 flex items-center justify-center text-xs font-bold cursor-pointer shrink-0"
+                    class="px-2.5 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 text-[11px] font-bold cursor-pointer shrink-0"
                     title="Burahin ang hotspot"
                   >
-                    🗑️
+                    {language === 'tl' ? 'Alisin' : 'Remove'}
                   </button>
                 {/if}
               </div>
