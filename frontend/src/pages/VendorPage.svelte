@@ -51,47 +51,74 @@
     onUpdateProduct(prod);
   }
 
-  function handlePhotoUpload(e: Event) {
+  /** Compress photo via canvas to stay under localStorage quota. */
+  function compressImage(file: File, maxWidth = 600, quality = 0.7): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        const scale = Math.min(1, maxWidth / img.width);
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width * scale;
+        canvas.height = img.height * scale;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) { reject(new Error('Canvas not supported')); return; }
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        URL.revokeObjectURL(url);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Image load failed')); };
+      img.src = url;
+    });
+  }
+
+  function persistVendorPhoto(photo: string | null) {
+    if (typeof window === 'undefined') return;
+    try {
+      const sessionKey = localStorage.getItem('pwesto_session')
+        ? 'pwesto_session'
+        : (localStorage.getItem('pwestoradar_session') ? 'pwestoradar_session' : 'pwesto_session');
+      const raw = localStorage.getItem(sessionKey);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (photo) {
+          parsed.verifiedPhoto = photo;
+        } else {
+          delete parsed.verifiedPhoto;
+        }
+        localStorage.setItem(sessionKey, JSON.stringify(parsed));
+      }
+    } catch (err) {
+      console.error('Failed to update photo in session storage', err);
+    }
+  }
+
+  async function handlePhotoUpload(e: Event) {
     const input = e.target as HTMLInputElement;
     if (input.files && input.files[0]) {
       const file = input.files[0];
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const result = event.target?.result as string;
-        uploadedPhoto = result;
-        session.verifiedPhoto = result;
-        if (typeof window !== 'undefined' && localStorage) {
-          try {
-            const raw = localStorage.getItem('taho_user_session');
-            if (raw) {
-              const parsed = JSON.parse(raw);
-              parsed.verifiedPhoto = result;
-              localStorage.setItem('taho_user_session', JSON.stringify(parsed));
-            }
-          } catch (err) {
-            console.error('Failed to save photo to session', err);
-          }
-        }
-      };
-      reader.readAsDataURL(file);
+      try {
+        const compressed = await compressImage(file);
+        uploadedPhoto = compressed;
+        session.verifiedPhoto = compressed;
+        persistVendorPhoto(compressed);
+      } catch {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const result = event.target?.result as string;
+          uploadedPhoto = result;
+          session.verifiedPhoto = result;
+          persistVendorPhoto(result);
+        };
+        reader.readAsDataURL(file);
+      }
     }
   }
 
   function removePhoto() {
     uploadedPhoto = null;
     delete session.verifiedPhoto;
-    if (typeof window !== 'undefined' && localStorage) {
-      try {
-        const raw = localStorage.getItem('taho_user_session');
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          delete parsed.verifiedPhoto;
-          localStorage.setItem('taho_user_session', JSON.stringify(parsed));
-        }
-      } catch (err) {
-        console.error('Failed to remove photo from session', err);
-      }
-    }
+    persistVendorPhoto(null);
   }
 </script>
 
