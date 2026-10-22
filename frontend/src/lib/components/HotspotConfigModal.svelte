@@ -386,7 +386,7 @@
               on:click={setCoordinatesToSession}
               class="px-2.5 py-1.5 rounded-xl bg-[#D97706]/15 text-[#D97706] font-black text-[11px] cursor-pointer hover:bg-[#D97706]/25"
             >
-              📍 {language === 'tl' ? 'Kasalukuyang GPS' : 'Use Current GPS'}
+              {language === 'tl' ? 'Kasalukuyang Lokasyon' : 'Use Current Location'}
             </button>
           </div>
 
@@ -397,7 +397,7 @@
               isDarkMode ? 'bg-[#F59E0B] text-[#1A120B] hover:bg-[#D97706]' : 'bg-[#4A2E1B] text-white hover:bg-[#361F11]'
             }`}
           >
-            <span>💾</span>
+            <span></span>
             <span>{language === 'tl' ? 'I-save ang Skedyul ng Paaralan' : 'Save School Dismissal Schedule'}</span>
           </button>
         </form>
@@ -594,7 +594,7 @@
               on:click={setCoordinatesToSession}
               class="px-2.5 py-1.5 rounded-xl bg-[#D97706]/15 text-[#D97706] font-black text-[11px] cursor-pointer hover:bg-[#D97706]/25"
             >
-              📍 {language === 'tl' ? 'Kasalukuyang GPS' : 'Use Current GPS'}
+              {language === 'tl' ? 'Kasalukuyang Lokasyon' : 'Use Current Location'}
             </button>
           </div>
 
@@ -605,7 +605,7 @@
               isDarkMode ? 'bg-[#F59E0B] text-[#1A120B] hover:bg-[#D97706]' : 'bg-[#4A2E1B] text-white hover:bg-[#361F11]'
             }`}
           >
-            <span>💾</span>
+            <span></span>
             <span>{language === 'tl' ? 'I-save ang Community Event' : 'Save Community Event'}</span>
           </button>
         </form>
@@ -615,14 +615,14 @@
         <div class="space-y-3">
           <div class="flex items-center justify-between pb-2 border-b border-black/5 dark:border-white/5">
             <span class="text-xs font-black uppercase text-[#796658] dark:text-[#D6C7B2]">
-              {language === 'tl' ? 'Lahat ng Aktibong Hotspot' : 'All Active Hotspots'} ({activeHotspots.length})
+              {language === 'tl' ? 'Mga Aktibong Hotspot' : 'All Active Hotspots'} ({activeHotspots.length})
             </span>
             <button
               type="button"
               on:click={handleResetDefaults}
               class="text-xs font-bold text-red-500 hover:underline cursor-pointer"
             >
-              🔄 {language === 'tl' ? 'I-reset sa Defaults' : 'Reset to Defaults'}
+               {language === 'tl' ? 'I-reset sa Defaults' : 'Reset to Defaults'}
             </button>
           </div>
 
@@ -682,7 +682,7 @@
       }`}
     >
       <p class="font-medium">
-        🛡️ <strong>{language === 'tl' ? 'Paalala sa Datos:' : 'Data Integrity Notice:'}</strong>
+         <strong>{language === 'tl' ? 'Paalala sa Datos:' : 'Data Integrity Notice:'}</strong>
         {language === 'tl'
           ? 'Ang mga kalkulasyon ay hango sa nakatakdang iskedyul ng paaralan at iniulat na aktibidad ng barangay, hindi totoong foot surveillance camera.'
           : 'Calculations are derived from configured school calendars and reported community activities, not surveillance camera feeds.'}
