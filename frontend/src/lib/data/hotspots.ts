@@ -995,18 +995,20 @@ const PRESET_HUBS: PresetHubDefinition[] = [
 export function generateDynamicDemoHotspots(
   centerLat: number,
   centerLng: number,
-  bounds?: ViewportBounds
+  _bounds?: ViewportBounds
 ): DemandHotspot[] {
-  // Determine coordinate span to distribute hotspots nicely within view
-  const latSpan = bounds ? Math.abs(bounds.north - bounds.south) : 0.012;
-  const lngSpan = bounds ? Math.abs(bounds.east - bounds.west) : 0.014;
+  // Snap to a fixed geographic grid (~1.6km cell) so demo hotspots stay pinned
+  // to exact real-world coordinates and never move when panning or zooming the map.
+  const GRID_STEP = 0.015;
+  const anchorLat = Math.round(centerLat / GRID_STEP) * GRID_STEP;
+  const anchorLng = Math.round(centerLng / GRID_STEP) * GRID_STEP;
 
-  // Clamped offsets so hotspots appear naturally in the neighborhood
-  const dLat = Math.min(0.005, Math.max(0.0012, latSpan * 0.25));
-  const dLng = Math.min(0.006, Math.max(0.0014, lngSpan * 0.25));
+  // Fixed geographic offsets independent of zoom / viewport bounds
+  const dLat = 0.0025;
+  const dLng = 0.0028;
 
   // Spatial grid key for stable IDs
-  const gridKey = `${Math.round(centerLat * 100)}_${Math.round(centerLng * 100)}`;
+  const gridKey = `${Math.round(anchorLat * 1000)}_${Math.round(anchorLng * 1000)}`;
 
   const templates: Array<{
     suffix: string;
@@ -1162,8 +1164,8 @@ export function generateDynamicDemoHotspots(
     name: t.name,
     nameTl: t.nameTl,
     category: t.category,
-    lat: Number((centerLat + t.latOff).toFixed(5)),
-    lng: Number((centerLng + t.lngOff).toFixed(5)),
+    lat: Number((anchorLat + t.latOff).toFixed(5)),
+    lng: Number((anchorLng + t.lngOff).toFixed(5)),
     radiusM: t.radiusM,
     opportunityScore: t.score,
     potentialLevel: getPotentialLevel(t.score),
@@ -1243,9 +1245,9 @@ export function getDemandHotspotsForViewport(
   const custom = loadCustomHotspots();
   const candidates: DemandHotspot[] = [];
 
-  // 1. Always include user-added custom hotspots that fall within the visible viewport bounds
+  // 1. Always include user-added custom hotspots near the area or within viewport bounds
   for (const c of custom) {
-    if (isCoordWithinBounds(c.lat, c.lng, bounds, 0.2)) {
+    if (distanceInMeters(centerLat, centerLng, c.lat, c.lng) <= 3500 || isCoordWithinBounds(c.lat, c.lng, bounds, 0.25)) {
       candidates.push(c);
     }
   }
@@ -1254,26 +1256,21 @@ export function getDemandHotspotsForViewport(
   let foundPreset = false;
   for (const hub of PRESET_HUBS) {
     const distToHub = distanceInMeters(centerLat, centerLng, hub.lat, hub.lng);
-    const hubInBounds = isCoordWithinBounds(hub.lat, hub.lng, bounds, 0.2);
+    const hubInBounds = isCoordWithinBounds(hub.lat, hub.lng, bounds, 0.25);
 
     if (distToHub <= 3500 || hubInBounds) {
       foundPreset = true;
       for (const h of hub.hotspots) {
-        if (isCoordWithinBounds(h.lat, h.lng, bounds, 0.25)) {
-          candidates.push(h);
-        }
+        candidates.push(h);
       }
     }
   }
 
-  // 3. If no preset hub is in view (or if very few candidates were found in the visible area),
-  // generate geographically localized demo hotspots positioned within the visible viewport.
-  if (!foundPreset || candidates.length < 3) {
+  // 3. Only when exploring an area outside preset hubs, generate fixed-grid demo hotspots
+  if (!foundPreset) {
     const demoHotspots = generateDynamicDemoHotspots(centerLat, centerLng, bounds);
     for (const d of demoHotspots) {
-      if (isCoordWithinBounds(d.lat, d.lng, bounds, 0.1)) {
-        candidates.push(d);
-      }
+      candidates.push(d);
     }
   }
 

@@ -48,11 +48,11 @@
   let activeFilter: ProductType | null = null;
   let selectedVendor: TaggedVendor | null = null;
 
-  // Huff Gravity Model Viability Evaluation for Vendor
-  $: anchors = generateAnchorsAround(mapCenterLat, mapCenterLng);
-  $: competitors = generateCompetitorsAround(mapCenterLat, mapCenterLng);
+  // Huff Gravity Model Viability Evaluation for Vendor (pinned to session location so markers stay stationary on map pan)
+  $: anchors = generateAnchorsAround(session.lat, session.lng);
+  $: competitors = generateCompetitorsAround(session.lat, session.lng);
   let selectedArchetype = BUSINESS_ARCHETYPES.find((a) => a.id === session.product?.toLowerCase()) || BUSINESS_ARCHETYPES[2];
-  $: viability = evaluateLocationViability(mapCenterLat, mapCenterLng, selectedArchetype, anchors, competitors);
+  $: viability = evaluateLocationViability(session.lat, session.lng, selectedArchetype, anchors, competitors);
 
   let viabilityMarker: L.Marker | null = null;
   let viabilityLine: L.Polyline | null = null;
@@ -66,20 +66,17 @@
     mapCenterLat = session.lat;
     mapCenterLng = session.lng;
     map.flyTo([session.lat, session.lng], 16, { duration: 0.6 });
-    reloadHotspots();
+    reloadHotspots(true);
     renderMapElements();
   }
 
   // Recommended viability spot for vendor ("Saan Magandang Pepwesto")
   $: recommendedViabilitySpot = (() => {
     if (session.role !== 'vendor' || !anchors || anchors.length === 0) return null;
-    const distFromUser = calculateDistanceM(session.lat, session.lng, mapCenterLat, mapCenterLng);
-    const refLat = distFromUser < 1500 ? session.lat : mapCenterLat;
-    const refLng = distFromUser < 1500 ? session.lng : mapCenterLng;
     let nearest = anchors[0];
-    let minD = calculateDistanceM(refLat, refLng, nearest.lat, nearest.lng);
+    let minD = calculateDistanceM(session.lat, session.lng, nearest.lat, nearest.lng);
     for (const a of anchors) {
-      const d = calculateDistanceM(refLat, refLng, a.lat, a.lng);
+      const d = calculateDistanceM(session.lat, session.lng, a.lat, a.lng);
       if (d < minD) {
         nearest = a;
         minD = d;
@@ -91,7 +88,7 @@
       ratingTl: viability.ratingTl,
       ratingEn: viability.ratingEn,
       score: viability.score,
-      isNearUser: distFromUser < 1500,
+      isNearUser: true,
     };
   })();
 
@@ -181,7 +178,7 @@
     reloadHotspots();
   }
 
-  function reloadHotspots() {
+  function reloadHotspots(force: boolean = false) {
     if (!map) {
       demandHotspots = getAllDemandHotspots(session.lat, session.lng);
       return;
@@ -196,7 +193,20 @@
       east: b.getEast(),
       west: b.getWest(),
     };
-    demandHotspots = getDemandHotspotsForViewport(currentViewportBounds, center.lat, center.lng, map.getZoom());
+    const nextHotspots = getDemandHotspotsForViewport(currentViewportBounds, center.lat, center.lng, map.getZoom());
+    const isSame =
+      !force &&
+      nextHotspots.length === demandHotspots.length &&
+      nextHotspots.every(
+        (h, i) =>
+          h.id === demandHotspots[i]?.id &&
+          h.lat === demandHotspots[i]?.lat &&
+          h.lng === demandHotspots[i]?.lng &&
+          h.opportunityScore === demandHotspots[i]?.opportunityScore
+      );
+    if (!isSame) {
+      demandHotspots = nextHotspots;
+    }
   }
 
   function handleTargetLocation(lat: number, lng: number) {
@@ -1518,7 +1528,7 @@
       activeHotspots={demandHotspots}
       onClose={() => (showHotspotConfigModal = false)}
       onHotspotsUpdated={() => {
-        reloadHotspots();
+        reloadHotspots(true);
         renderMapElements();
       }}
     />

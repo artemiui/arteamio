@@ -194,114 +194,123 @@ export function generateAnchorsAround(centerLat: number, centerLng: number): Tra
     }
   }
 
-  // Anchor naming profiles by hub
+  // Anchor naming profiles by hub (pinned to fixed hub coordinates so they never move when panning)
   if (nearestHub && minDistance <= 3500) {
+    const hLat = nearestHub.lat;
+    const hLng = nearestHub.lng;
     if (nearestHub.id === 'qc-cubao') {
       return [
-        { id: 'anchor-jeep-1', name: 'MRT-3 Cubao & Aurora Blvd Jeepney Bay', type: 'jeepney', lat: centerLat + 0.0007, lng: centerLng - 0.0008, weight: 1.0 },
-        { id: 'anchor-trike-1', name: 'Farmer’s Plaza Tricycle TODA', type: 'tricycle', lat: centerLat - 0.0008, lng: centerLng - 0.0006, weight: 0.85 },
-        { id: 'anchor-bridge-1', name: 'EDSA-Cubao Commuter Footbridge', type: 'school', lat: centerLat + 0.0012, lng: centerLng + 0.0005, weight: 0.95 },
-        { id: 'anchor-train-1', name: 'Gateway Bus & Transit Terminal', type: 'train', lat: centerLat - 0.0013, lng: centerLng + 0.0009, weight: 1.2 },
+        { id: 'anchor-jeep-1', name: 'MRT-3 Cubao & Aurora Blvd Jeepney Bay', type: 'jeepney', lat: hLat + 0.0007, lng: hLng - 0.0008, weight: 1.0 },
+        { id: 'anchor-trike-1', name: 'Farmer’s Plaza Tricycle TODA', type: 'tricycle', lat: hLat - 0.0008, lng: hLng - 0.0006, weight: 0.85 },
+        { id: 'anchor-bridge-1', name: 'EDSA-Cubao Commuter Footbridge', type: 'school', lat: hLat + 0.0012, lng: hLng + 0.0005, weight: 0.95 },
+        { id: 'anchor-train-1', name: 'Gateway Bus & Transit Terminal', type: 'train', lat: hLat - 0.0013, lng: hLng + 0.0009, weight: 1.2 },
       ];
     }
     if (nearestHub.id === 'makati-ayala') {
       return [
-        { id: 'anchor-jeep-1', name: 'One Ayala & MRT-3 UV Express Bay', type: 'jeepney', lat: centerLat + 0.0006, lng: centerLng + 0.0005, weight: 1.0 },
-        { id: 'anchor-trike-1', name: 'Poblacion Tricycle TODA Terminal', type: 'tricycle', lat: centerLat - 0.0008, lng: centerLng - 0.0005, weight: 0.85 },
-        { id: 'anchor-bridge-1', name: 'Paseo de Roxas Commuter Overpass', type: 'school', lat: centerLat + 0.0011, lng: centerLng - 0.0004, weight: 0.95 },
-        { id: 'anchor-train-1', name: 'Buendia Bus & Jeepney Interchange', type: 'train', lat: centerLat - 0.0014, lng: centerLng + 0.0008, weight: 1.2 },
+        { id: 'anchor-jeep-1', name: 'One Ayala & MRT-3 UV Express Bay', type: 'jeepney', lat: hLat + 0.0006, lng: hLng + 0.0005, weight: 1.0 },
+        { id: 'anchor-trike-1', name: 'Poblacion Tricycle TODA Terminal', type: 'tricycle', lat: hLat - 0.0008, lng: hLng - 0.0005, weight: 0.85 },
+        { id: 'anchor-bridge-1', name: 'Paseo de Roxas Commuter Overpass', type: 'school', lat: hLat + 0.0011, lng: hLng - 0.0004, weight: 0.95 },
+        { id: 'anchor-train-1', name: 'Buendia Bus & Jeepney Interchange', type: 'train', lat: hLat - 0.0014, lng: hLng + 0.0008, weight: 1.2 },
       ];
     }
     if (nearestHub.id === 'taguig-bgc') {
       return [
-        { id: 'anchor-jeep-1', name: 'Market! Market! Central Jeepney Bay', type: 'jeepney', lat: centerLat + 0.0008, lng: centerLng + 0.0006, weight: 1.0 },
-        { id: 'anchor-trike-1', name: 'Kalayaan Ave Tricycle Terminal', type: 'tricycle', lat: centerLat - 0.0007, lng: centerLng - 0.0006, weight: 0.85 },
-        { id: 'anchor-bridge-1', name: '32nd St. Pedestrian Crosswalk Hub', type: 'school', lat: centerLat + 0.0012, lng: centerLng - 0.0003, weight: 0.95 },
-        { id: 'anchor-train-1', name: 'BGC Bus Central Depot', type: 'train', lat: centerLat - 0.0013, lng: centerLng + 0.0010, weight: 1.2 },
+        { id: 'anchor-jeep-1', name: 'Market! Market! Central Jeepney Bay', type: 'jeepney', lat: hLat + 0.0008, lng: hLng + 0.0006, weight: 1.0 },
+        { id: 'anchor-trike-1', name: 'Kalayaan Ave Tricycle Terminal', type: 'tricycle', lat: hLat - 0.0007, lng: hLng - 0.0006, weight: 0.85 },
+        { id: 'anchor-bridge-1', name: '32nd St. Pedestrian Crosswalk Hub', type: 'school', lat: hLat + 0.0012, lng: hLng - 0.0003, weight: 0.95 },
+        { id: 'anchor-train-1', name: 'BGC Bus Central Depot', type: 'train', lat: hLat - 0.0013, lng: hLng + 0.0010, weight: 1.2 },
       ];
     }
     if (nearestHub.id === 'pasig-ortigas') {
       return [
-        { id: 'anchor-jeep-1', name: 'MRT-3 Ortigas & Megamall Terminal', type: 'jeepney', lat: centerLat + 0.0007, lng: centerLng - 0.0007, weight: 1.0 },
-        { id: 'anchor-trike-1', name: 'San Antonio TODA Terminal', type: 'tricycle', lat: centerLat - 0.0008, lng: centerLng + 0.0006, weight: 0.85 },
-        { id: 'anchor-bridge-1', name: 'Ortigas MRT Footbridge', type: 'school', lat: centerLat + 0.0011, lng: centerLng + 0.0004, weight: 0.95 },
-        { id: 'anchor-train-1', name: 'Meralco Ave UV Express Gate', type: 'train', lat: centerLat - 0.0014, lng: centerLng - 0.0008, weight: 1.2 },
+        { id: 'anchor-jeep-1', name: 'MRT-3 Ortigas & Megamall Terminal', type: 'jeepney', lat: hLat + 0.0007, lng: hLng - 0.0007, weight: 1.0 },
+        { id: 'anchor-trike-1', name: 'San Antonio TODA Terminal', type: 'tricycle', lat: hLat - 0.0008, lng: hLng + 0.0006, weight: 0.85 },
+        { id: 'anchor-bridge-1', name: 'Ortigas MRT Footbridge', type: 'school', lat: hLat + 0.0011, lng: hLng + 0.0004, weight: 0.95 },
+        { id: 'anchor-train-1', name: 'Meralco Ave UV Express Gate', type: 'train', lat: hLat - 0.0014, lng: hLng - 0.0008, weight: 1.2 },
       ];
     }
     if (nearestHub.id === 'caloocan-monumento') {
       return [
-        { id: 'anchor-jeep-1', name: 'Monumento LRT-1 & MCU Bus Bay', type: 'jeepney', lat: centerLat + 0.0007, lng: centerLng + 0.0004, weight: 1.0 },
-        { id: 'anchor-trike-1', name: 'Samson Road TODA Terminal', type: 'tricycle', lat: centerLat - 0.0008, lng: centerLng - 0.0006, weight: 0.85 },
-        { id: 'anchor-bridge-1', name: 'Monumento Pedestrian Footbridge', type: 'school', lat: centerLat + 0.0012, lng: centerLng - 0.0003, weight: 0.95 },
-        { id: 'anchor-train-1', name: '10th Ave Jeepney Terminal', type: 'train', lat: centerLat - 0.0013, lng: centerLng + 0.0008, weight: 1.2 },
+        { id: 'anchor-jeep-1', name: 'Monumento LRT-1 & MCU Bus Bay', type: 'jeepney', lat: hLat + 0.0007, lng: hLng + 0.0004, weight: 1.0 },
+        { id: 'anchor-trike-1', name: 'Samson Road TODA Terminal', type: 'tricycle', lat: hLat - 0.0008, lng: hLng - 0.0006, weight: 0.85 },
+        { id: 'anchor-bridge-1', name: 'Monumento Pedestrian Footbridge', type: 'school', lat: hLat + 0.0012, lng: hLng - 0.0003, weight: 0.95 },
+        { id: 'anchor-train-1', name: '10th Ave Jeepney Terminal', type: 'train', lat: hLat - 0.0013, lng: hLng + 0.0008, weight: 1.2 },
       ];
     }
     if (nearestHub.id === 'cebu-itpark') {
       return [
-        { id: 'anchor-jeep-1', name: 'Colon Metro Cebu Jeepney Hub', type: 'jeepney', lat: centerLat + 0.0007, lng: centerLng + 0.0005, weight: 1.0 },
-        { id: 'anchor-trike-1', name: 'Pelaez St. Tricycle Terminal', type: 'tricycle', lat: centerLat - 0.0008, lng: centerLng - 0.0006, weight: 0.85 },
-        { id: 'anchor-bridge-1', name: 'Downtown Pedestrian Footbridge', type: 'school', lat: centerLat + 0.0012, lng: centerLng - 0.0004, weight: 0.95 },
-        { id: 'anchor-train-1', name: 'Cebu IT Park Transport Terminal', type: 'train', lat: centerLat - 0.0014, lng: centerLng + 0.0009, weight: 1.2 },
+        { id: 'anchor-jeep-1', name: 'Colon Metro Cebu Jeepney Hub', type: 'jeepney', lat: hLat + 0.0007, lng: hLng + 0.0005, weight: 1.0 },
+        { id: 'anchor-trike-1', name: 'Pelaez St. Tricycle Terminal', type: 'tricycle', lat: hLat - 0.0008, lng: hLng - 0.0006, weight: 0.85 },
+        { id: 'anchor-bridge-1', name: 'Downtown Pedestrian Footbridge', type: 'school', lat: hLat + 0.0012, lng: hLng - 0.0004, weight: 0.95 },
+        { id: 'anchor-train-1', name: 'Cebu IT Park Transport Terminal', type: 'train', lat: hLat - 0.0014, lng: hLng + 0.0009, weight: 1.2 },
       ];
     }
     if (nearestHub.id === 'davao-roxas') {
       return [
-        { id: 'anchor-jeep-1', name: 'Roxas Night Market Jeepney Bay', type: 'jeepney', lat: centerLat + 0.0007, lng: centerLng + 0.0005, weight: 1.0 },
-        { id: 'anchor-trike-1', name: 'Claveria Tricycle & Multicab Terminal', type: 'tricycle', lat: centerLat - 0.0008, lng: centerLng - 0.0006, weight: 0.85 },
-        { id: 'anchor-bridge-1', name: 'Ateneo Overpass & Walkway', type: 'school', lat: centerLat + 0.0012, lng: centerLng - 0.0004, weight: 0.95 },
-        { id: 'anchor-train-1', name: 'Recto Ave Transit Node', type: 'train', lat: centerLat - 0.0014, lng: centerLng + 0.0009, weight: 1.2 },
+        { id: 'anchor-jeep-1', name: 'Roxas Night Market Jeepney Bay', type: 'jeepney', lat: hLat + 0.0007, lng: hLng + 0.0005, weight: 1.0 },
+        { id: 'anchor-trike-1', name: 'Claveria Tricycle & Multicab Terminal', type: 'tricycle', lat: hLat - 0.0008, lng: hLng - 0.0006, weight: 0.85 },
+        { id: 'anchor-bridge-1', name: 'Ateneo Overpass & Walkway', type: 'school', lat: hLat + 0.0012, lng: hLng - 0.0004, weight: 0.95 },
+        { id: 'anchor-train-1', name: 'Recto Ave Transit Node', type: 'train', lat: hLat - 0.0014, lng: hLng + 0.0009, weight: 1.2 },
       ];
     }
     if (nearestHub.id === 'manila-espana') {
       return [
-        { id: 'anchor-jeep-1', name: 'España Jeepney / UV Express Loading Bay', type: 'jeepney', lat: centerLat + 0.0007, lng: centerLng + 0.0005, weight: 1.0 },
-        { id: 'anchor-trike-1', name: 'Lacson Tricycle TODA Terminal', type: 'tricycle', lat: centerLat - 0.0008, lng: centerLng - 0.0006, weight: 0.85 },
-        { id: 'anchor-bridge-1', name: 'España Pedestrian Footbridge', type: 'school', lat: centerLat + 0.0012, lng: centerLng - 0.0004, weight: 0.95 },
-        { id: 'anchor-train-1', name: 'PNR España Transit Gate', type: 'train', lat: centerLat - 0.0015, lng: centerLng + 0.0011, weight: 1.2 },
+        { id: 'anchor-jeep-1', name: 'España Jeepney / UV Express Loading Bay', type: 'jeepney', lat: hLat + 0.0007, lng: hLng + 0.0005, weight: 1.0 },
+        { id: 'anchor-trike-1', name: 'Lacson Tricycle TODA Terminal', type: 'tricycle', lat: hLat - 0.0008, lng: hLng - 0.0006, weight: 0.85 },
+        { id: 'anchor-bridge-1', name: 'España Pedestrian Footbridge', type: 'school', lat: hLat + 0.0012, lng: hLng - 0.0004, weight: 0.95 },
+        { id: 'anchor-train-1', name: 'PNR España Transit Gate', type: 'train', lat: hLat - 0.0015, lng: hLng + 0.0011, weight: 1.2 },
       ];
     }
   }
 
-  // Generic localized transit anchors for any coordinate
+  // Snap generic localized transit anchors to a fixed geographic grid so they stay stationary on the map
+  const GRID_STEP = 0.015;
+  const baseLat = Math.round(centerLat / GRID_STEP) * GRID_STEP;
+  const baseLng = Math.round(centerLng / GRID_STEP) * GRID_STEP;
+
   return [
     {
       id: 'anchor-jeep-1',
       name: 'Pangunahing Sakayan / UV & Jeepney Hub',
       type: 'jeepney',
-      lat: centerLat + 0.0007,
-      lng: centerLng + 0.0005,
+      lat: baseLat + 0.0007,
+      lng: baseLng + 0.0005,
       weight: 1.0,
     },
     {
       id: 'anchor-trike-1',
       name: 'Lokal na Barangay Tricycle TODA',
       type: 'tricycle',
-      lat: centerLat - 0.0008,
-      lng: centerLng - 0.0006,
+      lat: baseLat - 0.0008,
+      lng: baseLng - 0.0006,
       weight: 0.85,
     },
     {
       id: 'anchor-bridge-1',
       name: 'Pedestrian Overpass / Tawiran',
       type: 'school',
-      lat: centerLat + 0.0012,
-      lng: centerLng - 0.0004,
+      lat: baseLat + 0.0012,
+      lng: baseLng - 0.0004,
       weight: 0.95,
     },
     {
       id: 'anchor-train-1',
       name: 'Transit Terminal Waiting Area',
       type: 'train',
-      lat: centerLat - 0.0015,
-      lng: centerLng + 0.0011,
+      lat: baseLat - 0.0015,
+      lng: baseLng + 0.0011,
       weight: 1.2,
     },
   ];
 }
 
 export function generateCompetitorsAround(centerLat: number, centerLng: number): CompetitorNode[] {
+  const GRID_STEP = 0.015;
+  const baseLat = Math.round(centerLat / GRID_STEP) * GRID_STEP;
+  const baseLng = Math.round(centerLng / GRID_STEP) * GRID_STEP;
   return [
-    { id: 'comp-1', name: 'Karinderya Corner', lat: centerLat + 0.0005, lng: centerLng - 0.0003, category: 'food' },
-    { id: 'comp-2', name: 'Sari-Sari Store & Drinks', lat: centerLat - 0.0006, lng: centerLng + 0.0008, category: 'convenience' },
+    { id: 'comp-1', name: 'Karinderya Corner', lat: baseLat + 0.0005, lng: baseLng - 0.0003, category: 'food' },
+    { id: 'comp-2', name: 'Sari-Sari Store & Drinks', lat: baseLat - 0.0006, lng: baseLng + 0.0008, category: 'convenience' },
   ];
 }
