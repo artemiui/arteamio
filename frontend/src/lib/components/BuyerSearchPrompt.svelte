@@ -6,7 +6,7 @@
   export let onConfirmLocation: (locationName: string, lat: number, lng: number) => void;
   export let onBack: () => void;
 
-  let searchQuery: string = '📍 Kasalukuyang Lokasyon (GPS)';
+  let searchQuery: string = 'Kasalukuyang Lokasyon (GPS)';
   let detectedLat: number = 14.6200; // Default to central Metro Manila (Cubao)
   let detectedLng: number = 121.0530;
   let isDetectingGPS: boolean = false;
@@ -26,7 +26,7 @@
           gpsStatus = 'active';
           detectedLat = Number(pos.coords.latitude.toFixed(5));
           detectedLng = Number(pos.coords.longitude.toFixed(5));
-          searchQuery = language === 'tl' ? '📍 Aking Kasalukuyang Lokasyon (GPS)' : '📍 My Current Location (GPS)';
+          searchQuery = language === 'tl' ? 'Aking Kasalukuyang Lokasyon (GPS)' : 'My Current Location (GPS)';
         },
         () => {
           isDetectingGPS = false;

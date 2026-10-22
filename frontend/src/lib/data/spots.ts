@@ -153,6 +153,7 @@ export function generateTaggedVendorsAround(centerLat: number, centerLng: number
       distanceM: 290,
       etaMins: 4,
       status: 'live',
+      verifiedPhoto: 'https://images.unsplash.com/photo-1541696432-82c6da8ce7bf?auto=format&fit=crop&w=400&q=80',
     },
     {
       id: 'v-siomai-2',
@@ -167,6 +168,7 @@ export function generateTaggedVendorsAround(centerLat: number, centerLng: number
       distanceM: 380,
       etaMins: 6,
       status: 'live',
+      verifiedPhoto: 'https://images.unsplash.com/photo-1496116218417-1a781b1c416c?auto=format&fit=crop&w=400&q=80',
     },
   ];
 }

@@ -1,7 +1,8 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import type { Language, ProductType, TaggedVendor, UserSession } from '../types';
-  import { PRODUCT_LEGEND } from '../data/spots';
+  import { BUSINESS_ARCHETYPES, generateAnchorsAround, generateCompetitorsAround, PRODUCT_LEGEND } from '../data/spots';
+  import { evaluateLocationViability } from '../gravity';
   import Logo from './Logo.svelte';
   import L from 'leaflet';
 
@@ -9,7 +10,7 @@
   export let vendors: TaggedVendor[];
   export let language: Language = 'tl';
   export let isDarkMode: boolean = false;
-  export let onToggleDarkMode: () => void;
+  export let onNavigateToLanding: (() => void) | undefined = undefined;
   export let onSwitchRole: () => void;
   export let onResetSession: () => void;
   export let onNavigateToSettings: (() => void) | undefined = undefined;
@@ -26,6 +27,23 @@
   // Selected filter (null = all)
   let activeFilter: ProductType | null = null;
   let selectedVendor: TaggedVendor | null = null;
+
+  // Huff Gravity Model Viability Evaluation for Vendor
+  let anchors = generateAnchorsAround(session.lat, session.lng);
+  let competitors = generateCompetitorsAround(session.lat, session.lng);
+  let selectedArchetype = BUSINESS_ARCHETYPES.find((a) => a.id === session.product?.toLowerCase()) || BUSINESS_ARCHETYPES[2];
+  $: viability = evaluateLocationViability(session.lat, session.lng, selectedArchetype, anchors, competitors);
+
+  function handleZoomIn() {
+    map?.zoomIn();
+  }
+
+  function handleZoomOut() {
+    map?.zoomOut();
+  }
+
+  // Floating vendor list sidebar state
+  let isVendorListOpen: boolean = true;
 
   // Vendor sidebar / drawer open state
   let isSidebarOpen: boolean = false;
@@ -45,8 +63,11 @@
       zoomControl: false,
     });
 
-    // Zoom controls placed at bottom right
-    L.control.zoom({ position: 'bottomright' }).addTo(map);
+    // Zoom controls integrated in custom bottom-right panel
+
+    if (typeof window !== 'undefined') {
+      isVendorListOpen = window.innerWidth >= 640;
+    }
 
     applyMapTileTheme();
     renderMapElements();
@@ -206,147 +227,289 @@
   <!-- FULL SCREEN GOOGLE MAPS CANVAS -->
   <div bind:this={mapContainer} class="w-full h-full z-10"></div>
 
-  <!-- FLOATING TOP BAR (GOOGLE MAPS STYLE) -->
-  <div class="absolute top-3 inset-x-3 sm:inset-x-6 z-30 pointer-events-none flex flex-col items-center gap-2">
-    <!-- Top Search & Menu Pill -->
-    <div class={`w-full max-w-xl backdrop-blur-md rounded-full border shadow-lg px-3 py-2 flex items-center justify-between gap-2 pointer-events-auto transition-colors ${
-      isDarkMode
-        ? 'bg-[#271A10]/95 border-[#3D2717] text-[#FAF7F2]'
-        : 'bg-white/95 border-[#EAE4D9] text-[#4A2E1B]'
-    }`}>
-      <!-- Role Indicator / Vendor Drawer Toggle -->
-      {#if session.role === 'vendor'}
+  <!-- FULL RECTANGULAR TOPBAR (LOGO PROMINENT ON LEFT, LOCATION IN CENTER, SETTINGS ON RIGHT) -->
+  <header class={`absolute top-0 inset-x-0 z-30 w-full backdrop-blur-md shadow-sm transition-colors ${
+    isDarkMode ? 'bg-[#1A120B]/95 text-[#FAF7F2]' : 'bg-white/95 text-[#4A2E1B]'
+  }`}>
+    <div class="w-full max-w-7xl mx-auto h-16 sm:h-20 px-4 sm:px-6 flex items-center justify-between gap-3">
+      <!-- Leftmost: Logo (Prominent) + Directory Toggle + Vendor Drawer Toggle (if vendor) -->
+      <div class="flex items-center gap-2.5 sm:gap-3.5 shrink-0">
         <button
           type="button"
-          on:click={() => (isSidebarOpen = !isSidebarOpen)}
-          class={`w-9 h-9 rounded-full transition flex items-center justify-center text-sm font-bold cursor-pointer shrink-0 ${
-            isSidebarOpen
+          on:click={() => (onNavigateToLanding ? onNavigateToLanding() : null)}
+          class="cursor-pointer transition-transform active:scale-95 flex items-center shrink-0"
+          title={language === 'tl' ? 'Bumalik sa Landing Page' : 'Return to Home'}
+        >
+          <Logo {isDarkMode} className="h-10 sm:h-12 w-auto object-contain" />
+        </button>
+
+        <!-- Toggleable Sidebar Button -->
+        <button
+          type="button"
+          on:click={() => (isVendorListOpen = !isVendorListOpen)}
+          class={`px-2.5 sm:px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 text-xs font-black cursor-pointer shadow-xs active:scale-95 ${
+            isVendorListOpen
               ? 'bg-[#4A2E1B] text-white'
               : isDarkMode
-                ? 'bg-[#352317] hover:bg-[#4A2E1B] text-[#F59E0B]'
-                : 'bg-[#FEF3C7] hover:bg-[#FDE68A] text-[#D97706]'
+                ? 'bg-[#271A10] hover:bg-[#352317] text-[#FAF7F2]'
+                : 'bg-[#FAF7F2] hover:bg-[#EAE4D9] text-[#4A2E1B]'
           }`}
-          title="Menu ng Tindero"
+          title="Listahan ng Paninda"
         >
-          🛒
+          <span>📋</span>
+          <span class="hidden sm:inline">{language === 'tl' ? 'Mga Paninda' : 'Vendors'}</span>
+          <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-[#D97706] text-white font-black">{filteredVendors.length}</span>
         </button>
-      {:else}
-        <div
-          class={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${
-            isDarkMode ? 'bg-[#352317] text-[#FAF7F2]' : 'bg-[#FAF7F2] text-[#4A2E1B]'
-          }`}
-          title="Mamimili (Buyer Mode)"
-        >
-          🥣
-        </div>
-      {/if}
 
-      <!-- Logo Display in Search Bar -->
-      <div class="hidden sm:block shrink-0">
-        <Logo {isDarkMode} className="h-6 w-auto object-contain" />
+        {#if session.role === 'vendor'}
+          <button
+            type="button"
+            on:click={() => (isSidebarOpen = !isSidebarOpen)}
+            class={`px-2.5 sm:px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 text-xs font-black cursor-pointer shadow-xs active:scale-95 ${
+              isSidebarOpen
+                ? 'bg-[#4A2E1B] text-white'
+                : isDarkMode
+                  ? 'bg-[#352317] hover:bg-[#4A2E1B] text-[#F59E0B]'
+                  : 'bg-[#FEF3C7] hover:bg-[#FDE68A] text-[#D97706]'
+            }`}
+            title="Menu ng Tindero"
+          >
+            <span>🛒</span>
+            <span class="hidden sm:inline">{language === 'tl' ? 'Tindahan Mo' : 'Your Stall'}</span>
+          </button>
+        {/if}
       </div>
 
-      <!-- Location Label / Search -->
+      <!-- Center: Location Search Button -->
       <button
         type="button"
         on:click={() => (onNavigateToSearch ? onNavigateToSearch() : handleRecenterGPS())}
-        class="flex-1 flex items-center gap-2 text-left truncate cursor-pointer px-2"
+        class={`flex-1 max-w-sm sm:max-w-md flex items-center justify-center sm:justify-start gap-2 px-3.5 py-2.5 rounded-xl transition text-left cursor-pointer truncate shadow-xs ${
+          isDarkMode
+            ? 'bg-[#271A10] hover:bg-[#352317] text-[#FAF7F2]'
+            : 'bg-[#FAF7F2] hover:bg-[#F3EDE2] text-[#4A2E1B]'
+        }`}
         title="Pindutin para magpalit ng lugar"
       >
-        <span class="text-base text-[#D97706]">📍</span>
-        <div class="truncate">
-          <p class="text-xs sm:text-sm font-extrabold truncate leading-tight">
-            {session.locationName}
-          </p>
-          <p class={`text-[10px] font-semibold leading-tight ${isDarkMode ? 'text-[#D6C7B2]' : 'text-[#796658]'}`}>
-            {session.role === 'vendor' ? (language === 'tl' ? 'Pwesto Mo' : 'Your Stall') : (language === 'tl' ? 'Lugar Mo (GPS)' : 'Your Spot')}
-          </p>
-        </div>
+        <span class="text-xs sm:text-sm font-extrabold truncate">
+          {session.locationName}
+        </span>
       </button>
 
-      <!-- Recenter GPS Target Icon -->
-      <button
-        type="button"
-        on:click={handleRecenterGPS}
-        class="w-9 h-9 rounded-full bg-[#FEF3C7] text-[#D97706] hover:bg-[#FDE68A] transition flex items-center justify-center text-base cursor-pointer shrink-0"
-        title="Center on me"
-      >
-        🎯
-      </button>
-
-      <!-- Settings Page Link Button -->
-      {#if onNavigateToSettings}
-        <button
-          type="button"
-          on:click={onNavigateToSettings}
-          class={`w-9 h-9 rounded-full border flex items-center justify-center text-sm transition cursor-pointer shrink-0 ${
-            isDarkMode
-              ? 'bg-[#352317] border-[#3D2717] text-[#FAF7F2] hover:bg-[#4A2E1B]'
-              : 'bg-[#FAF7F2] border-[#EAE4D9] text-[#4A2E1B] hover:bg-white'
+      <!-- Rightmost: Role Badge & Settings Button -->
+      <div class="flex items-center gap-2 shrink-0">
+        <!-- Role Badge -->
+        <div
+          class={`px-2.5 py-1.5 rounded-xl text-[11px] font-black shrink-0 ${
+            session.role === 'vendor'
+              ? (isDarkMode ? 'bg-[#452B14] text-[#F59E0B]' : 'bg-[#FEF3C7] text-[#D97706]')
+              : (isDarkMode ? 'bg-[#271A10] text-[#D6C7B2]' : 'bg-[#FAF7F2] text-[#796658]')
           }`}
-          title="Mga Setting"
         >
-          ⚙️
-        </button>
-      {/if}
+          {session.role === 'vendor' ? '🛒 Tindero' : '🥣 Mamimili'}
+        </div>
 
-      <!-- Dark Mode Toggle Button -->
-      <button
-        type="button"
-        on:click={onToggleDarkMode}
-        class={`w-9 h-9 rounded-full border flex items-center justify-center text-sm transition cursor-pointer shrink-0 ${
-          isDarkMode
-            ? 'bg-[#352317] border-[#3D2717] text-[#F59E0B]'
-            : 'bg-[#FAF7F2] border-[#EAE4D9] text-[#4A2E1B]'
-        }`}
-        title={isDarkMode ? 'Light Mode' : 'Dark Mode'}
-        aria-label="Toggle Dark Mode"
-      >
-        <span>{isDarkMode ? '☀️' : '🌙'}</span>
-      </button>
-
-      <!-- Deliberate Role Badge (Non-clickable to prevent accidental switches) -->
-      <div
-        class={`px-3 py-1.5 rounded-full border text-[11px] font-black shrink-0 ${
-          session.role === 'vendor'
-            ? (isDarkMode ? 'bg-[#452B14] border-[#F59E0B]/40 text-[#F59E0B]' : 'bg-[#FEF3C7] border-[#D97706]/40 text-[#D97706]')
-            : (isDarkMode ? 'bg-[#271A10] border-[#3D2717] text-[#D6C7B2]' : 'bg-[#FAF7F2] border-[#EAE4D9] text-[#796658]')
-        }`}
-      >
-        {session.role === 'vendor' ? '🛒 Tindero' : '🥣 Bibili'}
+        <!-- Settings Button (Hosts Theme, Language, Audio, and Role Switch) -->
+        {#if onNavigateToSettings}
+          <button
+            type="button"
+            on:click={onNavigateToSettings}
+            class={`w-10 h-10 rounded-xl flex items-center justify-center text-sm transition cursor-pointer shadow-xs active:scale-95 ${
+              isDarkMode
+                ? 'bg-[#271A10] hover:bg-[#352317] text-[#FAF7F2]'
+                : 'bg-[#FAF7F2] hover:bg-[#EAE4D9] text-[#4A2E1B]'
+            }`}
+            title="Mga Setting"
+            aria-label="Settings"
+          >
+            ⚙️
+          </button>
+        {/if}
       </div>
     </div>
+  </header>
 
-    <!-- UNIVERSAL PRODUCT LEGEND BAR (HORIZONTAL FILTER PILLS) -->
-    <div class="flex items-center gap-1.5 overflow-x-auto max-w-full px-2 py-1 pointer-events-auto">
-      <button
-        type="button"
-        on:click={() => (activeFilter = null)}
-        class={`px-3.5 py-1.5 rounded-full text-xs font-extrabold whitespace-nowrap shadow-sm transition-all cursor-pointer ${
-          activeFilter === null
-            ? (isDarkMode ? 'bg-[#F59E0B] text-[#1A120B]' : 'bg-[#4A2E1B] text-[#FAF7F2]')
-            : (isDarkMode ? 'bg-[#271A10] text-[#FAF7F2] border border-[#3D2717]' : 'bg-white text-[#4A2E1B] border border-[#EAE4D9]')
-        }`}
-      >
-        {language === 'tl' ? 'Lahat' : 'All'} ({vendors.length})
-      </button>
+  <!-- TOGGLEABLE MOBILE SIDEBAR / FLOATING DESKTOP PANEL -->
+  {#if isVendorListOpen}
+    <!-- Mobile Backdrop Overlay -->
+    <div
+      class="fixed inset-0 bg-black/50 backdrop-blur-xs z-30 sm:hidden animate-fade-in"
+      on:click={() => (isVendorListOpen = false)}
+      role="button"
+      tabindex="0"
+      on:keydown={(e) => e.key === 'Escape' && (isVendorListOpen = false)}
+      aria-label="Close sidebar"
+    ></div>
 
-      {#each PRODUCT_LEGEND as item}
+    <aside
+      class={`fixed inset-y-0 left-0 w-80 max-w-[85vw] z-40 rounded-r-3xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col transition-all duration-300 pointer-events-auto sm:absolute sm:top-24 sm:left-6 sm:bottom-6 sm:w-96 sm:max-w-sm sm:z-20 animate-slide-right sm:animate-none ${
+        isDarkMode ? 'bg-[#1A120B]/98 sm:bg-[#1A120B]/95 text-[#FAF7F2]' : 'bg-white/98 sm:bg-white/95 text-[#4A2E1B]'
+      }`}
+    >
+      <!-- Sidebar Top Header -->
+      <div class={`p-4 pb-3 flex items-center justify-between border-b ${
+        isDarkMode ? 'border-white/10' : 'border-black/5'
+      }`}>
+        <div>
+          <div class="flex items-center gap-2">
+            <h3 class="text-sm sm:text-base font-black">
+              {language === 'tl' ? 'Mga Paninda sa Paligid' : 'Nearby Vendors'}
+            </h3>
+            <span class="text-xs px-2.5 py-0.5 rounded-full font-black bg-[#D97706]/15 text-[#D97706]">
+              {filteredVendors.length}
+            </span>
+          </div>
+          <p class={`text-[11px] font-medium mt-0.5 ${isDarkMode ? 'text-[#D6C7B2]' : 'text-[#796658]'}`}>
+            {language === 'tl' ? 'Piliin upang puntahan sa mapa' : 'Tap to focus vendor on map'}
+          </p>
+        </div>
+
+        <!-- Minimize/Close Button -->
         <button
           type="button"
-          on:click={() => (activeFilter = activeFilter === item.type ? null : item.type)}
-          class={`px-3.5 py-1.5 rounded-full text-xs font-extrabold whitespace-nowrap shadow-sm transition-all cursor-pointer flex items-center gap-1.5 ${
-            activeFilter === item.type
-              ? (isDarkMode ? 'bg-[#F59E0B] text-[#1A120B] scale-105' : 'bg-[#4A2E1B] text-[#FAF7F2] scale-105')
-              : (isDarkMode ? 'bg-[#271A10] text-[#FAF7F2] border border-[#3D2717] hover:bg-[#352317]' : 'bg-white text-[#4A2E1B] border border-[#EAE4D9] hover:bg-[#FAF7F2]')
+          on:click={() => (isVendorListOpen = false)}
+          class={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition cursor-pointer active:scale-95 ${
+            isDarkMode ? 'bg-[#271A10] hover:bg-[#352317] text-[#FAF7F2]' : 'bg-[#FAF7F2] hover:bg-[#EAE4D9] text-[#4A2E1B]'
+          }`}
+          title="Itago ang Listahan"
+          aria-label="Minimize list"
+        >
+          ✕
+        </button>
+      </div>
+
+      <!-- Clean Product Category Filter Chips Inside Sidebar -->
+      <div class={`px-3 py-2.5 overflow-x-auto flex items-center gap-1.5 shrink-0 border-b ${
+        isDarkMode ? 'border-white/10 bg-[#271A10]/50' : 'border-black/5 bg-[#FAF7F2]/50'
+      }`}>
+        <button
+          type="button"
+          on:click={() => (activeFilter = null)}
+          class={`px-3 py-1 rounded-xl text-xs font-black whitespace-nowrap transition-all cursor-pointer ${
+            activeFilter === null
+              ? (isDarkMode ? 'bg-[#F59E0B] text-[#1A120B]' : 'bg-[#4A2E1B] text-[#FAF7F2]')
+              : (isDarkMode ? 'bg-[#271A10] text-[#FAF7F2] hover:bg-[#352317]' : 'bg-white text-[#4A2E1B] hover:bg-[#FAF7F2]')
           }`}
         >
-          <span>{item.icon}</span>
-          <span>{language === 'tl' ? item.labelTl : item.labelEn}</span>
+          {language === 'tl' ? 'Lahat' : 'All'}
         </button>
-      {/each}
-    </div>
-  </div>
+
+        {#each PRODUCT_LEGEND as item}
+          <button
+            type="button"
+            on:click={() => (activeFilter = activeFilter === item.type ? null : item.type)}
+            class={`px-3 py-1 rounded-xl text-xs font-black whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
+              activeFilter === item.type
+                ? (isDarkMode ? 'bg-[#F59E0B] text-[#1A120B] scale-102' : 'bg-[#4A2E1B] text-[#FAF7F2] scale-102')
+                : (isDarkMode ? 'bg-[#271A10] text-[#FAF7F2] hover:bg-[#352317]' : 'bg-white text-[#4A2E1B] hover:bg-[#FAF7F2]')
+            }`}
+          >
+            <span>{item.icon}</span>
+            <span>{language === 'tl' ? item.labelTl : item.labelEn}</span>
+          </button>
+        {/each}
+      </div>
+
+      <!-- Scrollable Vendors List with Uploaded Photos -->
+      <div class="flex-1 overflow-y-auto p-3 space-y-2.5">
+        {#if filteredVendors.length === 0}
+          <div class="p-8 text-center text-xs opacity-60">
+            {language === 'tl' ? 'Walang nahanap na paninda sa kategoryang ito.' : 'No vendors found in this category.'}
+          </div>
+        {:else}
+          {#each filteredVendors as vendor}
+            <div
+              role="button"
+              tabindex="0"
+              on:click={() => {
+                selectedVendor = vendor;
+                map?.flyTo([vendor.lat, vendor.lng], 17, { duration: 0.5 });
+                if (typeof window !== 'undefined' && window.innerWidth < 640) {
+                  isVendorListOpen = false;
+                }
+              }}
+              on:keydown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  selectedVendor = vendor;
+                  map?.flyTo([vendor.lat, vendor.lng], 17, { duration: 0.5 });
+                }
+              }}
+              class={`p-3 rounded-2xl cursor-pointer transition-all flex items-start gap-3 shadow-xs active:scale-98 ${
+                selectedVendor?.id === vendor.id
+                  ? (isDarkMode ? 'bg-[#452B14] ring-2 ring-[#F59E0B]' : 'bg-[#FEF3C7] ring-2 ring-[#D97706]')
+                  : (isDarkMode ? 'bg-[#271A10] hover:bg-[#352317]' : 'bg-[#FAF7F2] hover:bg-[#F3EDE2]')
+              }`}
+            >
+              <!-- Uploaded Photo with Status Badge -->
+              <div class="relative shrink-0">
+                {#if vendor.verifiedPhoto}
+                  <img
+                    src={vendor.verifiedPhoto}
+                    alt={vendor.name}
+                    class="w-16 h-16 sm:w-18 sm:h-18 rounded-xl object-cover shadow-xs"
+                  />
+                {:else}
+                  <div class="w-16 h-16 rounded-xl bg-[#EAE4D9] dark:bg-[#352317] flex items-center justify-center text-2xl">
+                    {vendor.icon}
+                  </div>
+                {/if}
+
+                <!-- Live Pulse Dot -->
+                {#if vendor.status === 'live'}
+                  <span class="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-green-500 ring-2 ring-white dark:ring-black"></span>
+                {/if}
+              </div>
+
+              <!-- Vendor Details -->
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center justify-between gap-1">
+                  <h4 class="font-black text-sm truncate">{vendor.name}</h4>
+                  <span class="text-xs font-black text-[#D97706] shrink-0">{vendor.price}</span>
+                </div>
+
+                <p class={`text-xs font-semibold truncate ${isDarkMode ? 'text-[#D6C7B2]' : 'text-[#796658]'}`}>
+                  {language === 'tl' ? vendor.productNameTl : vendor.productName}
+                </p>
+
+                <div class="flex items-center justify-between mt-2 pt-1.5 border-t border-black/5 dark:border-white/5 text-[11px]">
+                  <span class={`font-bold ${isDarkMode ? 'text-[#D6C7B2]' : 'text-[#796658]'}`}>
+                    📍 {vendor.distanceM}m • ~{vendor.etaMins}m
+                  </span>
+
+                  <span class={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                    vendor.status === 'live'
+                      ? 'bg-green-500/15 text-green-500'
+                      : vendor.status === 'stopped'
+                        ? 'bg-amber-500/15 text-amber-500'
+                        : 'bg-red-500/15 text-red-500'
+                   }`}>
+                    {vendor.status === 'live' ? 'Naglilibot' : vendor.status === 'stopped' ? 'Nakatigil' : 'Ubos Na'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          {/each}
+        {/if}
+      </div>
+    </aside>
+  {:else}
+    <!-- Floating Toggle Button when Sidebar is Minimized -->
+    <button
+      type="button"
+      on:click={() => (isVendorListOpen = true)}
+      class={`absolute top-20 sm:top-24 left-3 sm:left-6 z-20 px-4 py-2.5 rounded-2xl backdrop-blur-md shadow-xl flex items-center gap-2.5 font-black text-xs transition cursor-pointer active:scale-95 ${
+        isDarkMode ? 'bg-[#1A120B]/95 text-[#FAF7F2] hover:bg-[#271A10]' : 'bg-white/95 text-[#4A2E1B] hover:bg-[#FAF7F2]'
+      }`}
+      title="Buksan ang Listahan ng Paninda"
+    >
+      <span>📋</span>
+      <span>{language === 'tl' ? 'Ipakita ang Paninda' : 'Show Vendors'}</span>
+      <span class="px-2 py-0.5 rounded-full bg-[#D97706] text-white text-[10px]">
+        {filteredVendors.length}
+      </span>
+    </button>
+  {/if}
+
 
   <!-- FLOATING ALERT TOAST (CHIME FEEDBACK) -->
   {#if alertToast}
@@ -546,23 +709,37 @@
           </div>
         {/if}
 
-        <!-- Dark Mode Toggle Row inside Sidebar -->
-        <div class={`p-3 rounded-2xl border flex items-center justify-between ${
-          isDarkMode ? 'bg-[#352317] border-[#3D2717]' : 'bg-[#FAF7F2] border-[#EAE4D9]'
+        <!-- Translated, Relevant Viability Calculations & Scores for Vendor -->
+        <div class={`p-4 rounded-2xl space-y-3 ${
+          isDarkMode ? 'bg-[#1A120B]' : 'bg-[#FAF7F2]'
         }`}>
-          <div class="flex items-center gap-2">
-            <span>{isDarkMode ? '🌙' : '☀️'}</span>
-            <span class="text-xs font-bold">{isDarkMode ? 'Dark Mode Naka-on' : 'Light Mode'}</span>
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-[#D97706] uppercase tracking-wider">
+              {language === 'tl' ? 'Saan Pepwesto? (Ganda ng Pwesto)' : 'Stall Viability Score'}
+            </span>
+            <span class="text-xs font-black px-2.5 py-0.5 rounded-full bg-green-500/10 text-green-500">
+              {viability.score}/100 • {viability.ratingTl}
+            </span>
           </div>
-          <button
-            type="button"
-            on:click={onToggleDarkMode}
-            class={`px-3 py-1 rounded-full text-xs font-bold border cursor-pointer ${
-              isDarkMode ? 'bg-[#F59E0B] text-[#1A120B] border-[#F59E0B]' : 'bg-white text-[#4A2E1B] border-[#EAE4D9]'
-            }`}
-          >
-            {isDarkMode ? 'Light' : 'Dark'}
-          </button>
+
+          <div class="space-y-2 text-xs">
+            <div class="flex items-start justify-between gap-2">
+              <span class="text-[#796658] dark:text-[#D6C7B2]">{language === 'tl' ? 'Dagsa ng Tao:' : 'Foot Traffic:'}</span>
+              <span class="font-bold text-right truncate">{language === 'tl' ? 'Mataas (~' + viability.nearestAnchorDistM + 'm sa sakayan)' : 'High (~' + viability.nearestAnchorDistM + 'm to hub)'}</span>
+            </div>
+            <div class="flex items-start justify-between gap-2">
+              <span class="text-[#796658] dark:text-[#D6C7B2]">{language === 'tl' ? 'Pinakamalapit na Sakayan:' : 'Nearest Transit Stop:'}</span>
+              <span class="font-bold text-right truncate">{viability.nearestAnchorName.split('/')[0]}</span>
+            </div>
+            <div class="flex items-start justify-between gap-2">
+              <span class="text-[#796658] dark:text-[#D6C7B2]">{language === 'tl' ? 'Pinakamagandang Oras:' : 'Peak Commuter Window:'}</span>
+              <span class="font-bold text-right text-green-500">{viability.peakHoursTl.split('(')[0]}</span>
+            </div>
+            <div class="flex items-start justify-between gap-2">
+              <span class="text-[#796658] dark:text-[#D6C7B2]">{language === 'tl' ? 'Kalabang Tindahan:' : 'Nearby Competition:'}</span>
+              <span class="font-bold text-right">{language === 'tl' ? viability.competitorCountWithin150m + ' lang sa 150m (Kakaunti)' : viability.competitorCountWithin150m + ' stall within 150m'}</span>
+            </div>
+          </div>
         </div>
 
         <!-- Quick Switch Options -->
@@ -631,4 +808,50 @@
       </div>
     </div>
   {/if}
+
+  <!-- INTEGRATED MAP NAVIGATION CONTROLS (BOTTOM RIGHT ROUNDED RECTANGLE - NO UNNECESSARY BORDERS) -->
+  <div class={`absolute bottom-6 right-4 sm:right-6 z-30 flex flex-col items-center backdrop-blur-md rounded-2xl shadow-xl p-1.5 space-y-1 select-none pointer-events-auto transition-colors ${
+    isDarkMode ? 'bg-[#271A10]/95 text-[#FAF7F2]' : 'bg-white/95 text-[#4A2E1B]'
+  }`}>
+    <!-- Zoom In -->
+    <button
+      type="button"
+      on:click={handleZoomIn}
+      class={`w-10 h-10 rounded-xl flex items-center justify-center text-lg font-black transition cursor-pointer active:scale-95 ${
+        isDarkMode ? 'hover:bg-[#352317] text-[#FAF7F2]' : 'hover:bg-[#FAF7F2] text-[#4A2E1B]'
+      }`}
+      title="Zoom In"
+      aria-label="Zoom In"
+    >
+      +
+    </button>
+
+    <!-- Zoom Out -->
+    <button
+      type="button"
+      on:click={handleZoomOut}
+      class={`w-10 h-10 rounded-xl flex items-center justify-center text-lg font-black transition cursor-pointer active:scale-95 ${
+        isDarkMode ? 'hover:bg-[#352317] text-[#FAF7F2]' : 'hover:bg-[#FAF7F2] text-[#4A2E1B]'
+      }`}
+      title="Zoom Out"
+      aria-label="Zoom Out"
+    >
+      −
+    </button>
+
+    <div class={`w-6 h-[1px] my-0.5 opacity-20 ${isDarkMode ? 'bg-white' : 'bg-black'}`}></div>
+
+    <!-- Center to Location -->
+    <button
+      type="button"
+      on:click={handleRecenterGPS}
+      class={`w-10 h-10 rounded-xl flex items-center justify-center text-base transition cursor-pointer active:scale-95 ${
+        isDarkMode ? 'text-[#F59E0B] hover:bg-[#352317]' : 'text-[#D97706] hover:bg-[#FAF7F2]'
+      }`}
+      title={language === 'tl' ? 'I-sentro sa Aking Lokasyon' : 'Center to My Location'}
+      aria-label="Center Map"
+    >
+      🎯
+    </button>
+  </div>
 </div>

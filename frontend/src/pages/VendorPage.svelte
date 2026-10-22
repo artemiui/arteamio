@@ -74,7 +74,14 @@
         <span>{language === 'tl' ? 'Tingnan sa Mapa' : 'View on Map'}</span>
       </button>
 
-      <Logo {isDarkMode} className="h-7 w-auto object-contain" />
+      <button
+        type="button"
+        on:click={() => onNavigate('landing')}
+        class="cursor-pointer transition-transform active:scale-95 flex items-center"
+        title="Bumalik sa Simula"
+      >
+        <Logo {isDarkMode} className="h-7 w-auto object-contain" />
+      </button>
 
       <button
         type="button"
@@ -103,7 +110,7 @@
     </div>
 
     <!-- Live Buyers Waiting Bento Card -->
-    <div class={`p-6 rounded-[32px] border text-center space-y-2 ${
+    <div class={`p-6 rounded-[32px] shadow-sm text-center space-y-2 ${
       isDarkMode ? 'bg-[#452B14] border-[#F59E0B]/30' : 'bg-[#FEF3C7] border-[#D97706]/30'
     }`}>
       <span class="text-xs font-extrabold uppercase tracking-wider text-[#D97706]">
@@ -121,7 +128,7 @@
     </div>
 
     <!-- Broadcast Status Switcher -->
-    <div class={`p-5 rounded-[28px] border space-y-3 ${
+    <div class={`p-5 rounded-[28px] shadow-sm space-y-3 ${
       isDarkMode ? 'bg-[#271A10] border-[#3D2717]' : 'bg-white border-[#EAE4D9]'
     }`}>
       <h2 class="text-xs font-bold uppercase tracking-wider text-[#796658]">
@@ -167,7 +174,7 @@
     </div>
 
     <!-- Product Selection ("Binebenta") -->
-    <div class={`p-5 rounded-[28px] border space-y-3 ${
+    <div class={`p-5 rounded-[28px] shadow-sm space-y-3 ${
       isDarkMode ? 'bg-[#271A10] border-[#3D2717]' : 'bg-white border-[#EAE4D9]'
     }`}>
       <h2 class="text-xs font-bold uppercase tracking-wider text-[#796658]">
@@ -191,59 +198,59 @@
       </div>
     </div>
 
-    <!-- Huff Gravity Model: Pwesto Viability Card ("Saan Pepwesto?") -->
-    <div class={`p-5 sm:p-6 rounded-[28px] border space-y-4 ${
-      isDarkMode ? 'bg-[#271A10] border-[#3D2717]' : 'bg-white border-[#EAE4D9]'
+    <!-- Translated, Easily Understood Pwesto Viability Insights ("Saan Magandang Pepwesto?") -->
+    <div class={`p-5 sm:p-6 rounded-[28px] shadow-sm space-y-4 ${
+      isDarkMode ? 'bg-[#271A10]' : 'bg-white'
     }`}>
       <div class="flex items-center justify-between">
         <div>
-          <span class="text-[11px] font-extrabold uppercase tracking-wider text-[#D97706]">
-            📐 {language === 'tl' ? 'Huff Gravity Model Foot-Traffic' : 'Huff Gravity Model Spatial Intel'}
+          <span class="text-[11px] font-black uppercase tracking-wider text-[#D97706]">
+            {language === 'tl' ? 'Matalinong Gabay sa Pwesto' : 'Smart Location Intel'}
           </span>
           <h2 class="text-base font-black">
-            {language === 'tl' ? 'Saan Pepwesto? (Viability Score)' : 'Stall Viability Score'}
+            {language === 'tl' ? 'Saan Magandang Pepwesto?' : 'Where Should You Set Up?'}
           </h2>
         </div>
-        <div class={`px-3 py-1.5 rounded-full text-xs font-black border ${
+        <div class={`px-3 py-1.5 rounded-full text-xs font-black ${
           viability.score >= 75
-            ? 'bg-green-500/10 text-green-500 border-green-500/20'
+            ? 'bg-green-500/10 text-green-500'
             : viability.score >= 50
-              ? 'bg-amber-500/10 text-amber-500 border-amber-500/20'
-              : 'bg-red-500/10 text-red-500 border-red-500/20'
+              ? 'bg-amber-500/10 text-amber-500'
+              : 'bg-red-500/10 text-red-500'
         }`}>
           {viability.score}/100 • {language === 'tl' ? viability.ratingTl : viability.ratingEn}
         </div>
       </div>
 
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
-        <div class={`p-3 rounded-2xl border ${isDarkMode ? 'bg-[#1A120B] border-[#3D2717]' : 'bg-[#FAF7F2] border-[#EAE4D9]'}`}>
-          <span class="text-[10px] font-bold uppercase text-[#796658]">
-            {language === 'tl' ? 'Pinakamalapit na Sakayan' : 'Nearest Transit Anchor'}
+        <div class={`p-3 rounded-2xl ${isDarkMode ? 'bg-[#1A120B]' : 'bg-[#FAF7F2]'}`}>
+          <span class="text-[10px] font-bold uppercase text-[#796658] dark:text-[#D6C7B2]">
+            {language === 'tl' ? 'Pinakamalapit na Sakayan' : 'Nearest Transit Hub'}
           </span>
-          <p class="font-extrabold mt-0.5 truncate">{viability.nearestAnchorName}</p>
-          <p class="text-[11px] text-[#D97706] font-bold">~{viability.nearestAnchorDistM}m layo</p>
+          <p class="font-black mt-0.5 truncate">{viability.nearestAnchorName.split('/')[0]}</p>
+          <p class="text-[11px] text-[#D97706] font-bold">~{viability.nearestAnchorDistM}m lang ang layo</p>
         </div>
 
-        <div class={`p-3 rounded-2xl border ${isDarkMode ? 'bg-[#1A120B] border-[#3D2717]' : 'bg-[#FAF7F2] border-[#EAE4D9]'}`}>
-          <span class="text-[10px] font-bold uppercase text-[#796658]">
-            {language === 'tl' ? 'Oras ng Dagsa ng Tao' : 'Peak Commuter Hours'}
+        <div class={`p-3 rounded-2xl ${isDarkMode ? 'bg-[#1A120B]' : 'bg-[#FAF7F2]'}`}>
+          <span class="text-[10px] font-bold uppercase text-[#796658] dark:text-[#D6C7B2]">
+            {language === 'tl' ? 'Oras ng Dagsa ng Tao' : 'Peak Commuter Window'}
           </span>
-          <p class="font-extrabold mt-0.5 truncate">{language === 'tl' ? viability.peakHoursTl : viability.peakHoursEn}</p>
-          <p class="text-[11px] text-green-500 font-bold">🔥 High Traffic Window</p>
+          <p class="font-black mt-0.5 truncate">{language === 'tl' ? viability.peakHoursTl.split('(')[0] : viability.peakHoursEn.split('(')[0]}</p>
+          <p class="text-[11px] text-green-500 font-bold">{language === 'tl' ? 'Mataas na Kita' : 'High Foot-Traffic'}</p>
         </div>
 
-        <div class={`p-3 rounded-2xl border ${isDarkMode ? 'bg-[#1A120B] border-[#3D2717]' : 'bg-[#FAF7F2] border-[#EAE4D9]'}`}>
-          <span class="text-[10px] font-bold uppercase text-[#796658]">
-            {language === 'tl' ? 'Kalapit na Kalaban' : 'Local Competition'}
+        <div class={`p-3 rounded-2xl ${isDarkMode ? 'bg-[#1A120B]' : 'bg-[#FAF7F2]'}`}>
+          <span class="text-[10px] font-bold uppercase text-[#796658] dark:text-[#D6C7B2]">
+            {language === 'tl' ? 'Kalabang Tindahan' : 'Nearby Competitors'}
           </span>
-          <p class="font-extrabold mt-0.5">{viability.competitorCountWithin150m} stall sa 150m</p>
-          <p class="text-[11px] text-[#796658] font-medium">Mababang density friction</p>
+          <p class="font-black mt-0.5">{viability.competitorCountWithin150m} {language === 'tl' ? 'stall sa 150m' : 'stall within 150m'}</p>
+          <p class="text-[11px] text-[#796658] dark:text-[#D6C7B2] font-medium">{language === 'tl' ? 'Kakaunti ang kumpetisyon' : 'Low competition'}</p>
         </div>
       </div>
     </div>
 
     <!-- Photo Verification Card -->
-    <div class={`p-5 rounded-[28px] border space-y-3 ${
+    <div class={`p-5 rounded-[28px] shadow-sm space-y-3 ${
       isDarkMode ? 'bg-[#271A10] border-[#3D2717]' : 'bg-white border-[#EAE4D9]'
     }`}>
       <h2 class="text-xs font-bold uppercase tracking-wider text-[#796658]">

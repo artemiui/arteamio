@@ -63,7 +63,14 @@
         <span>{language === 'tl' ? 'Bumalik sa Mapa' : 'Back to Map'}</span>
       </button>
 
-      <Logo {isDarkMode} className="h-7 w-auto object-contain" />
+      <button
+        type="button"
+        on:click={() => onNavigate('landing')}
+        class="cursor-pointer transition-transform active:scale-95 flex items-center"
+        title="Bumalik sa Simula"
+      >
+        <Logo {isDarkMode} className="h-7 w-auto object-contain" />
+      </button>
 
       <span class="text-xs font-bold text-[#D97706]">
         ⚙️ {language === 'tl' ? 'Mga Setting' : 'Settings'}

@@ -8,7 +8,7 @@
   export let onConfirmLocation: (locationName: string, lat: number, lng: number) => void;
   export let onNavigate: (route: string) => void;
 
-  let searchQuery: string = '📍 Kasalukuyang Lokasyon (GPS)';
+  let searchQuery: string = 'Kasalukuyang Lokasyon (GPS)';
   let selectedLat: number = 14.6200;
   let selectedLng: number = 121.0530;
   let isDetectingGPS: boolean = false;
@@ -21,7 +21,7 @@
           isDetectingGPS = false;
           selectedLat = Number(pos.coords.latitude.toFixed(5));
           selectedLng = Number(pos.coords.longitude.toFixed(5));
-          searchQuery = language === 'tl' ? '📍 Aking Kasalukuyang Lokasyon (GPS)' : '📍 My Current Location (GPS)';
+          searchQuery = language === 'tl' ? 'Aking Kasalukuyang Lokasyon (GPS)' : 'My Current Location (GPS)';
         },
         () => {
           isDetectingGPS = false;
@@ -60,10 +60,17 @@
         <span>{language === 'tl' ? 'Bumalik sa Mapa' : 'Back'}</span>
       </button>
 
-      <Logo {isDarkMode} className="h-7 w-auto object-contain" />
+      <button
+        type="button"
+        on:click={() => onNavigate('landing')}
+        class="cursor-pointer transition-transform active:scale-95 flex items-center"
+        title="Bumalik sa Simula"
+      >
+        <Logo {isDarkMode} className="h-7 w-auto object-contain" />
+      </button>
 
       <span class="text-xs font-bold text-[#D97706]">
-        📍 {language === 'tl' ? 'Maghanap' : 'Search'}
+        {language === 'tl' ? 'Maghanap' : 'Search'}
       </span>
     </header>
 
