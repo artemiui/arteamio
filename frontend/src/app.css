@@ -134,3 +134,96 @@ body.dark .leaflet-control-attribution a {
 .animate-warm-pulse {
   animation: warmPulse 2.5s infinite ease-in-out;
 }
+
+/* =========================================================================
+   SEAMLESS SCROLLBAR SYSTEM
+   Eliminates bulky OS/browser scrollbars, enables smooth touch/wheel panning
+   ========================================================================= */
+
+/* Hide scrollbars completely (useful for horizontal filter tabs/pills) */
+.no-scrollbar::-webkit-scrollbar,
+.scrollbar-none::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+.no-scrollbar,
+.scrollbar-none {
+  -ms-overflow-style: none !important; /* IE and Edge */
+  scrollbar-width: none !important; /* Firefox */
+}
+
+/* Global seamless scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(121, 102, 88, 0.25) transparent;
+}
+
+body.dark * {
+  scrollbar-color: rgba(214, 199, 178, 0.2) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(121, 102, 88, 0.25);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(121, 102, 88, 0.45);
+}
+
+body.dark ::-webkit-scrollbar-thumb {
+  background: rgba(214, 199, 178, 0.2);
+}
+
+body.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(214, 199, 178, 0.4);
+}
+
+/* Specific seamless scroll class for lists */
+.seamless-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(121, 102, 88, 0.25) transparent;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+body.dark .seamless-scroll {
+  scrollbar-color: rgba(214, 199, 178, 0.2) transparent;
+}
+
+.seamless-scroll::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.seamless-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.seamless-scroll::-webkit-scrollbar-thumb {
+  background: rgba(121, 102, 88, 0.25);
+  border-radius: 9999px;
+}
+
+.seamless-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(121, 102, 88, 0.45);
+}
+
+body.dark .seamless-scroll::-webkit-scrollbar-thumb {
+  background: rgba(214, 199, 178, 0.2);
+}
+
+body.dark .seamless-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(214, 199, 178, 0.4);
+}

@@ -603,7 +603,7 @@
 
   <!-- FLOATING DEMAND HOTSPOT FILTER BAR (WITH TEXTLESS HOTSPOTS TOGGLE NEXT TO MAG ULAT) -->
   <div
-    class={`absolute top-18 sm:top-22 inset-x-3 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 z-20 flex items-center justify-center gap-1.5 p-1.5 rounded-2xl backdrop-blur-md shadow-lg border overflow-x-auto max-w-[95vw] pointer-events-auto transition-colors animate-fade-in ${
+    class={`absolute top-18 sm:top-22 inset-x-3 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 z-20 flex items-center justify-center gap-1.5 p-1.5 rounded-2xl backdrop-blur-md shadow-lg border overflow-x-auto no-scrollbar max-w-[95vw] pointer-events-auto transition-colors animate-fade-in ${
       isDarkMode ? 'bg-[#1A120B]/95 border-[#3D2717] text-[#FAF7F2]' : 'bg-white/95 border-[#EAE4D9] text-[#4A2E1B]'
     }`}
   >
@@ -683,28 +683,36 @@
         <span>{language === 'tl' ? 'Mag-ulat' : 'Add'}</span>
       </button>
 
-      <!-- Textless Hotspots Toggle next to Mag Ulat -->
+      <!-- Hotspots Toggle Switch -->
       <button
         type="button"
+        role="switch"
+        aria-checked={isHotspotsVisible}
         on:click={() => {
           isHotspotsVisible = !isHotspotsVisible;
           if (isHotspotsVisible && demandHotspots.length === 0) {
             reloadHotspots();
           }
         }}
-        class={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center text-sm font-black transition cursor-pointer active:scale-95 border ${
+        class={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none shadow-xs active:scale-95 ${
           isHotspotsVisible
-            ? 'bg-[#EF4444] text-white border-[#EF4444] shadow-xs'
-            : isDarkMode
-              ? 'bg-[#271A10] text-[#796658] hover:text-[#FAF7F2] border-white/10'
-              : 'bg-[#FAF7F2] text-[#796658] hover:text-[#4A2E1B] border-black/5'
+            ? 'bg-[#EF4444]'
+            : (isDarkMode ? 'bg-[#352317]' : 'bg-[#EAE4D9]')
         }`}
         title={isHotspotsVisible
-          ? (language === 'tl' ? 'I-off ang Hotspots' : 'Hide Hotspots')
-          : (language === 'tl' ? 'I-on ang Hotspots' : 'Show Hotspots')}
-        aria-label="Toggle Hotspots"
+          ? (language === 'tl' ? 'I-off ang Hotspots' : 'Turn off hotspots')
+          : (language === 'tl' ? 'I-on ang Hotspots' : 'Turn on hotspots')}
+        aria-label={isHotspotsVisible
+          ? (language === 'tl' ? 'I-off ang Hotspots' : 'Turn off hotspots')
+          : (language === 'tl' ? 'I-on ang Hotspots' : 'Turn on hotspots')}
       >
-        <Icon name="flame" size={14} />
+        <span
+          class={`pointer-events-none inline-flex h-5 w-5 transform items-center justify-center rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+            isHotspotsVisible ? 'translate-x-5 text-[#EF4444]' : 'translate-x-0 text-[#796658]'
+          }`}
+        >
+          <Icon name="flame" size={12} strokeWidth={2.5} />
+        </span>
       </button>
     </div>
 
@@ -795,7 +803,7 @@
       <!-- TAB 1 CONTENT: VENDORS -->
       {#if sidebarActiveTab === 'vendors'}
         <!-- Clean Product Category Filter Chips Inside Sidebar -->
-        <div class={`px-3 py-2.5 overflow-x-auto flex items-center gap-1.5 shrink-0 border-b ${
+        <div class={`px-3 py-2.5 overflow-x-auto no-scrollbar flex items-center gap-1.5 shrink-0 border-b ${
           isDarkMode ? 'border-white/10 bg-[#271A10]/50' : 'border-black/5 bg-[#FAF7F2]/50'
         }`}>
           <button
@@ -827,7 +835,7 @@
         </div>
 
         <!-- Scrollable Vendors List with Uploaded Photos -->
-        <div class="flex-1 overflow-y-auto p-3 space-y-2.5">
+        <div class="flex-1 overflow-y-auto seamless-scroll p-3 space-y-2.5">
           {#if filteredVendors.length === 0}
             <div class="p-8 text-center text-xs opacity-60">
               {language === 'tl' ? 'Walang nahanap na paninda sa kategoryang ito.' : 'No vendors found in this category.'}
@@ -913,10 +921,10 @@
       <!-- TAB 2 CONTENT: DEMAND HOTSPOTS -->
       {:else}
         <!-- Category Filter & Add Event Button -->
-        <div class={`px-3 py-2 overflow-x-auto flex items-center justify-between gap-1.5 shrink-0 border-b ${
+        <div class={`px-3 py-2 overflow-x-auto no-scrollbar flex items-center justify-between gap-1.5 shrink-0 border-b ${
           isDarkMode ? 'border-white/10 bg-[#271A10]/50' : 'border-black/5 bg-[#FAF7F2]/50'
         }`}>
-          <div class="flex items-center gap-1 overflow-x-auto">
+          <div class="flex items-center gap-1 overflow-x-auto no-scrollbar">
             <button
               type="button"
               on:click={() => (activeHotspotCategory = 'all')}
@@ -980,34 +988,44 @@
             class="px-2 py-1 rounded-xl text-[11px] font-black bg-[#D97706]/15 hover:bg-[#D97706]/25 text-[#D97706] shrink-0 cursor-pointer active:scale-95"
             title="Magdagdag ng Event"
           >
-            ➕ {language === 'tl' ? 'Mag-ulat' : 'Add'}
+            <span class="inline-flex items-center gap-1"><Icon name="plus" size={12} /><span>{language === 'tl' ? 'Mag-ulat' : 'Add'}</span></span>
           </button>
 
-          <!-- Textless Hotspots Toggle in Sidebar next to Mag Ulat -->
+          <!-- Hotspots Toggle Switch in Sidebar next to Mag Ulat -->
           <button
             type="button"
+            role="switch"
+            aria-checked={isHotspotsVisible}
             on:click={() => {
               isHotspotsVisible = !isHotspotsVisible;
               if (isHotspotsVisible && demandHotspots.length === 0) {
                 reloadHotspots();
               }
             }}
-            class={`w-6 h-6 rounded-lg flex items-center justify-center text-xs transition cursor-pointer active:scale-95 border ${
+            class={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none shadow-xs active:scale-95 ${
               isHotspotsVisible
-                ? 'bg-[#EF4444] text-white border-[#EF4444]'
-                : isDarkMode
-                  ? 'bg-[#271A10] text-[#796658] border-white/10'
-                  : 'bg-[#FAF7F2] text-[#796658] border-black/5'
+                ? 'bg-[#EF4444]'
+                : (isDarkMode ? 'bg-[#352317]' : 'bg-[#EAE4D9]')
             }`}
-            title={isHotspotsVisible ? 'Hide Hotspots' : 'Show Hotspots'}
-            aria-label="Toggle Hotspots Layer"
+            title={isHotspotsVisible
+              ? (language === 'tl' ? 'I-off ang Hotspots' : 'Turn off hotspots')
+              : (language === 'tl' ? 'I-on ang Hotspots' : 'Turn on hotspots')}
+            aria-label={isHotspotsVisible
+              ? (language === 'tl' ? 'I-off ang Hotspots' : 'Turn off hotspots')
+              : (language === 'tl' ? 'I-on ang Hotspots' : 'Turn on hotspots')}
           >
-            <Icon name="flame" size={14} />
+            <span
+              class={`pointer-events-none inline-flex h-5 w-5 transform items-center justify-center rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                isHotspotsVisible ? 'translate-x-5 text-[#EF4444]' : 'translate-x-0 text-[#796658]'
+              }`}
+            >
+              <Icon name="flame" size={11} strokeWidth={2.5} />
+            </span>
           </button>
         </div>
 
         <!-- Hotspots List -->
-        <div class="flex-1 overflow-y-auto p-3 space-y-2.5">
+        <div class="flex-1 overflow-y-auto seamless-scroll p-3 space-y-2.5">
           {#if listHotspots.length === 0}
             <div class="p-8 text-center text-xs opacity-60">
               {language === 'tl' ? 'Walang nahanap na hotspot sa kategoryang ito.' : 'No hotspots in this category.'}
@@ -1210,7 +1228,7 @@
 
   <!-- VENDOR SIDEBAR / BOTTOM DRAWER (FOR MAGTITINDA ONLY) -->
   {#if session.role === 'vendor' && isSidebarOpen}
-    <div class={`absolute inset-y-0 left-0 w-full sm:w-96 backdrop-blur-md border-r shadow-2xl z-40 p-5 sm:p-6 flex flex-col justify-between overflow-y-auto animate-fade-in transition-colors ${
+    <div class={`absolute inset-y-0 left-0 w-full sm:w-96 backdrop-blur-md border-r shadow-2xl z-40 p-5 sm:p-6 flex flex-col justify-between overflow-y-auto seamless-scroll animate-fade-in transition-colors ${
       isDarkMode
         ? 'bg-[#271A10]/98 border-[#3D2717] text-[#FAF7F2]'
         : 'bg-white/98 border-[#EAE4D9] text-[#4A2E1B]'

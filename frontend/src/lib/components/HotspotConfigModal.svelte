@@ -207,7 +207,7 @@
 
     <!-- Tab Bar -->
     <div
-      class={`p-2 flex items-center gap-1.5 border-b shrink-0 overflow-x-auto ${
+      class={`p-2 flex items-center gap-1.5 border-b shrink-0 overflow-x-auto no-scrollbar ${
         isDarkMode ? 'bg-[#271A10] border-[#3D2717]' : 'bg-white border-[#EAE4D9]'
       }`}
     >
