@@ -117,6 +117,108 @@
       </p>
     </div>
 
+    <!-- MAIN AND FIRST ANALYTIC: "Saan Magandang Pepwesto?" WITH RATING CATEGORY -->
+    <div class={`p-6 sm:p-7 rounded-[32px] shadow-md space-y-5 border-2 transition-all ${
+      viability.score >= 75
+        ? (isDarkMode ? 'bg-[#271A10] border-[#F59E0B]/50' : 'bg-white border-[#D97706]/40 shadow-amber-500/5')
+        : (isDarkMode ? 'bg-[#271A10] border-[#3D2717]' : 'bg-white border-[#EAE4D9]')
+    }`}>
+      <!-- Header with Prominent Category Badge -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-black/5 dark:border-white/10">
+        <div>
+          <span class="text-xs font-black uppercase tracking-wider text-[#D97706] flex items-center gap-1.5">
+            <span>🎯</span>
+            <span>{language === 'tl' ? 'Pangunahing Gabay sa Pwesto' : 'Primary Stall Viability Intel'}</span>
+          </span>
+          <h2 class="text-xl sm:text-2xl font-black mt-1">
+            {language === 'tl' ? 'Saan Magandang Pepwesto?' : 'Where Should You Set Up?'}
+          </h2>
+        </div>
+
+        <!-- Rating Category Badge -->
+        <div class="flex items-center gap-2 shrink-0">
+          <div class={`px-4 py-2 rounded-2xl text-xs sm:text-sm font-black flex items-center gap-2 shadow-xs ${
+            viability.score >= 75
+              ? 'bg-green-500/15 text-green-600 dark:text-green-400 border border-green-500/30'
+              : viability.score >= 50
+                ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30'
+                : 'bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/30'
+          }`}>
+            <span class="text-base">⭐</span>
+            <span>{language === 'tl' ? viability.ratingTl : viability.ratingEn}</span>
+            <span class="opacity-40">|</span>
+            <span class="font-extrabold">{viability.score}/100</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Distance and Spot Hero Highlight -->
+      <div class={`p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+        isDarkMode ? 'bg-[#1A120B]' : 'bg-[#FAF7F2]'
+      }`}>
+        <div class="space-y-1">
+          <span class="text-[11px] font-bold uppercase text-[#796658] dark:text-[#D6C7B2]">
+            {language === 'tl' ? 'Inirerekomendang Pwesto (Pinakamalapit na Sakayan)' : 'Recommended Spot (Nearest Hub)'}
+          </span>
+          <p class="text-base sm:text-lg font-black text-[#4A2E1B] dark:text-[#FAF7F2]">
+            {viability.nearestAnchorName}
+          </p>
+          <p class="text-xs font-extrabold text-[#D97706] flex items-center gap-1">
+            <span>📍</span>
+            <span>{language === 'tl' ? `~${viability.nearestAnchorDistM}m layo mula sa kasalukuyang pwesto mo` : `~${viability.nearestAnchorDistM}m away from your current location`}</span>
+          </p>
+        </div>
+
+        <button
+          type="button"
+          on:click={() => onNavigate('map')}
+          class="px-4 py-2.5 rounded-xl text-xs font-black bg-[#D97706] hover:bg-[#B45309] text-white shadow-sm transition flex items-center justify-center gap-1.5 cursor-pointer shrink-0 active:scale-95"
+        >
+          <span>🗺️</span>
+          <span>{language === 'tl' ? 'Tingnan sa Mapa' : 'View on Map'}</span>
+        </button>
+      </div>
+
+      <!-- 3 Key Metric Breakdown -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+        <div class={`p-3.5 rounded-2xl ${isDarkMode ? 'bg-[#1A120B]' : 'bg-[#FAF7F2]'}`}>
+          <span class="text-[10px] font-bold uppercase text-[#796658] dark:text-[#D6C7B2]">
+            {language === 'tl' ? 'Dagsa ng Tao' : 'Foot Traffic'}
+          </span>
+          <p class="font-black text-sm mt-0.5 text-green-600 dark:text-green-400">
+            {language === 'tl' ? 'Mataas (Dagsa sa Sakayan)' : 'High Commuter Traffic'}
+          </p>
+          <p class="text-[11px] text-[#796658] dark:text-[#D6C7B2] font-medium mt-0.5">
+            {language === 'tl' ? 'Maraming sumasakay at naglalakad' : 'Active walking corridor'}
+          </p>
+        </div>
+
+        <div class={`p-3.5 rounded-2xl ${isDarkMode ? 'bg-[#1A120B]' : 'bg-[#FAF7F2]'}`}>
+          <span class="text-[10px] font-bold uppercase text-[#796658] dark:text-[#D6C7B2]">
+            {language === 'tl' ? 'Pinakamagandang Oras' : 'Peak Commuter Window'}
+          </span>
+          <p class="font-black text-sm mt-0.5 truncate text-[#D97706]">
+            {language === 'tl' ? viability.peakHoursTl.split('(')[0] : viability.peakHoursEn.split('(')[0]}
+          </p>
+          <p class="text-[11px] text-[#796658] dark:text-[#D6C7B2] font-medium mt-0.5">
+            {language === 'tl' ? 'Tanghalian at Uwian' : 'Peak buying window'}
+          </p>
+        </div>
+
+        <div class={`p-3.5 rounded-2xl ${isDarkMode ? 'bg-[#1A120B]' : 'bg-[#FAF7F2]'}`}>
+          <span class="text-[10px] font-bold uppercase text-[#796658] dark:text-[#D6C7B2]">
+            {language === 'tl' ? 'Kalabang Tindahan' : 'Nearby Competition'}
+          </span>
+          <p class="font-black text-sm mt-0.5">
+            {viability.competitorCountWithin150m} {language === 'tl' ? 'stall sa 150m' : 'stall within 150m'}
+          </p>
+          <p class="text-[11px] text-[#796658] dark:text-[#D6C7B2] font-medium mt-0.5">
+            {language === 'tl' ? 'Kakaunti ang kumpetisyon' : 'Low competition density'}
+          </p>
+        </div>
+      </div>
+    </div>
+
     <!-- Live Buyers Waiting Bento Card -->
     <div class={`p-6 rounded-[32px] shadow-sm text-center space-y-2 ${
       isDarkMode ? 'bg-[#452B14] border-[#F59E0B]/30' : 'bg-[#FEF3C7] border-[#D97706]/30'
@@ -206,56 +308,6 @@
       </div>
     </div>
 
-    <!-- Translated, Easily Understood Pwesto Viability Insights ("Saan Magandang Pepwesto?") -->
-    <div class={`p-5 sm:p-6 rounded-[28px] shadow-sm space-y-4 ${
-      isDarkMode ? 'bg-[#271A10]' : 'bg-white'
-    }`}>
-      <div class="flex items-center justify-between">
-        <div>
-          <span class="text-[11px] font-black uppercase tracking-wider text-[#D97706]">
-            {language === 'tl' ? 'Matalinong Gabay sa Pwesto' : 'Smart Location Intel'}
-          </span>
-          <h2 class="text-base font-black">
-            {language === 'tl' ? 'Saan Magandang Pepwesto?' : 'Where Should You Set Up?'}
-          </h2>
-        </div>
-        <div class={`px-3 py-1.5 rounded-full text-xs font-black ${
-          viability.score >= 75
-            ? 'bg-green-500/10 text-green-500'
-            : viability.score >= 50
-              ? 'bg-amber-500/10 text-amber-500'
-              : 'bg-red-500/10 text-red-500'
-        }`}>
-          {viability.score}/100 • {language === 'tl' ? viability.ratingTl : viability.ratingEn}
-        </div>
-      </div>
-
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
-        <div class={`p-3 rounded-2xl ${isDarkMode ? 'bg-[#1A120B]' : 'bg-[#FAF7F2]'}`}>
-          <span class="text-[10px] font-bold uppercase text-[#796658] dark:text-[#D6C7B2]">
-            {language === 'tl' ? 'Pinakamalapit na Sakayan' : 'Nearest Transit Hub'}
-          </span>
-          <p class="font-black mt-0.5 truncate">{viability.nearestAnchorName.split('/')[0]}</p>
-          <p class="text-[11px] text-[#D97706] font-bold">~{viability.nearestAnchorDistM}m lang ang layo</p>
-        </div>
-
-        <div class={`p-3 rounded-2xl ${isDarkMode ? 'bg-[#1A120B]' : 'bg-[#FAF7F2]'}`}>
-          <span class="text-[10px] font-bold uppercase text-[#796658] dark:text-[#D6C7B2]">
-            {language === 'tl' ? 'Oras ng Dagsa ng Tao' : 'Peak Commuter Window'}
-          </span>
-          <p class="font-black mt-0.5 truncate">{language === 'tl' ? viability.peakHoursTl.split('(')[0] : viability.peakHoursEn.split('(')[0]}</p>
-          <p class="text-[11px] text-green-500 font-bold">{language === 'tl' ? 'Mataas na Kita' : 'High Foot-Traffic'}</p>
-        </div>
-
-        <div class={`p-3 rounded-2xl ${isDarkMode ? 'bg-[#1A120B]' : 'bg-[#FAF7F2]'}`}>
-          <span class="text-[10px] font-bold uppercase text-[#796658] dark:text-[#D6C7B2]">
-            {language === 'tl' ? 'Kalabang Tindahan' : 'Nearby Competitors'}
-          </span>
-          <p class="font-black mt-0.5">{viability.competitorCountWithin150m} {language === 'tl' ? 'stall sa 150m' : 'stall within 150m'}</p>
-          <p class="text-[11px] text-[#796658] dark:text-[#D6C7B2] font-medium">{language === 'tl' ? 'Kakaunti ang kumpetisyon' : 'Low competition'}</p>
-        </div>
-      </div>
-    </div>
 
     <!-- Demand Hotspots Intel Section for Vendors -->
     <div class={`p-5 sm:p-6 rounded-[28px] shadow-sm space-y-4 ${

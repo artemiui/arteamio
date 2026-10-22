@@ -3,7 +3,7 @@
   import type { DemandHotspot, DemandHotspotCategory, Language, ProductType, TaggedVendor, UserSession } from '../types';
   import { BUSINESS_ARCHETYPES, generateAnchorsAround, generateCompetitorsAround, PRODUCT_LEGEND } from '../data/spots';
   import { getAllDemandHotspots, HOTSPOT_CATEGORY_META, HOTSPOT_LEVEL_META } from '../data/hotspots';
-  import { evaluateLocationViability } from '../gravity';
+  import { evaluateLocationViability, calculateDistanceM } from '../gravity';
   import Logo from './Logo.svelte';
   import HotspotDetailCard from './HotspotDetailCard.svelte';
   import HotspotConfigModal from './HotspotConfigModal.svelte';
@@ -13,7 +13,6 @@
   export let vendors: TaggedVendor[];
   export let language: Language = 'tl';
   export let isDarkMode: boolean = false;
-  export let onToggleDarkMode: (() => void) | undefined = undefined;
   export let onNavigateToLanding: (() => void) | undefined = undefined;
   export let onSwitchRole: () => void;
   export let onResetSession: () => void;
@@ -47,6 +46,30 @@
   let competitors = generateCompetitorsAround(session.lat, session.lng);
   let selectedArchetype = BUSINESS_ARCHETYPES.find((a) => a.id === session.product?.toLowerCase()) || BUSINESS_ARCHETYPES[2];
   $: viability = evaluateLocationViability(session.lat, session.lng, selectedArchetype, anchors, competitors);
+
+  let viabilityMarker: L.Marker | null = null;
+  let viabilityLine: L.Polyline | null = null;
+
+  // Recommended viability spot for vendor ("Saan Magandang Pepwesto")
+  $: recommendedViabilitySpot = (() => {
+    if (session.role !== 'vendor' || !anchors || anchors.length === 0) return null;
+    let nearest = anchors[0];
+    let minD = calculateDistanceM(session.lat, session.lng, nearest.lat, nearest.lng);
+    for (const a of anchors) {
+      const d = calculateDistanceM(session.lat, session.lng, a.lat, a.lng);
+      if (d < minD) {
+        nearest = a;
+        minD = d;
+      }
+    }
+    return {
+      ...nearest,
+      distanceM: minD,
+      ratingTl: viability.ratingTl,
+      ratingEn: viability.ratingEn,
+      score: viability.score,
+    };
+  })();
 
   function handleZoomIn() {
     map?.zoomIn();
@@ -90,6 +113,8 @@
 
   onDestroy(() => {
     if (map) {
+      if (viabilityMarker) map.removeLayer(viabilityMarker);
+      if (viabilityLine) map.removeLayer(viabilityLine);
       hotspotCircles.forEach((c) => map?.removeLayer(c));
       hotspotMarkers.forEach((m) => map?.removeLayer(m));
       map.remove();
@@ -133,12 +158,22 @@
     ? demandHotspots
     : demandHotspots.filter((h) => h.category === activeHotspotCategory);
 
-  $: if (map && (filteredVendors || session || isDarkMode || isHotspotsVisible || activeHotspotCategory || demandHotspots || selectedHotspot)) {
+  $: if (map && (filteredVendors || session || isDarkMode || isHotspotsVisible || activeHotspotCategory || demandHotspots || selectedHotspot || recommendedViabilitySpot)) {
     renderMapElements();
   }
 
   function renderMapElements() {
     if (!map) return;
+
+    // Clear old viability spot markers and distance line
+    if (viabilityMarker) {
+      map.removeLayer(viabilityMarker);
+      viabilityMarker = null;
+    }
+    if (viabilityLine) {
+      map.removeLayer(viabilityLine);
+      viabilityLine = null;
+    }
 
     // 1. Render User's Location Pin (Google Maps Blue Dot / Pin)
     if (userMarker) map.removeLayer(userMarker);
@@ -277,11 +312,91 @@
         hotspotMarkers.push(m);
       });
     }
+
+    // 5. Render Recommended Viability Spot & Distance Line (For Vendor: "Saan Magandang Pepwesto")
+    if (session.role === 'vendor' && recommendedViabilitySpot) {
+      // Dashed distance line from vendor's current pin to the recommended spot
+      viabilityLine = L.polyline(
+        [
+          [session.lat, session.lng],
+          [recommendedViabilitySpot.lat, recommendedViabilitySpot.lng],
+        ],
+        {
+          color: '#D97706',
+          weight: 3,
+          dashArray: '6, 8',
+          opacity: 0.9,
+        }
+      ).addTo(map!);
+
+      // Distance & category rating badge marker on the spot
+      const viabilitySpotHtml = `
+        <div class="relative flex flex-col items-center cursor-pointer select-none group -translate-y-2">
+          <div class="px-2.5 py-1 rounded-full ${
+            isDarkMode ? 'bg-[#271A10] text-[#F59E0B] border-[#F59E0B]/50' : 'bg-[#4A2E1B] text-[#FAF7F2] border-white'
+          } border shadow-lg text-[11px] font-black whitespace-nowrap mb-1 flex items-center gap-1.5 transition-transform group-hover:scale-105">
+            <span>⭐</span>
+            <span>${language === 'tl' ? recommendedViabilitySpot.ratingTl : recommendedViabilitySpot.ratingEn}</span>
+            <span class="opacity-50">•</span>
+            <span class="text-[#D97706] font-extrabold">~${recommendedViabilitySpot.distanceM}m</span>
+          </div>
+          <div class="w-10 h-10 rounded-2xl bg-[#D97706] text-white border-2 border-white shadow-xl flex items-center justify-center text-lg font-black transition-transform group-hover:scale-110">
+            📍
+          </div>
+        </div>
+      `;
+
+      viabilityMarker = L.marker([recommendedViabilitySpot.lat, recommendedViabilitySpot.lng], {
+        icon: L.divIcon({
+          html: viabilitySpotHtml,
+          className: 'viability-spot-marker',
+          iconSize: [160, 60],
+          iconAnchor: [80, 56],
+        }),
+        zIndexOffset: 850,
+      }).addTo(map!);
+
+      viabilityMarker.on('click', () => {
+        map?.flyTo([recommendedViabilitySpot.lat, recommendedViabilitySpot.lng], 17, { duration: 0.5 });
+      });
+
+      viabilityMarker.bindPopup(`
+        <div class="p-1 space-y-1 text-xs">
+          <div class="font-black text-[#D97706]">${language === 'tl' ? 'Saan Magandang Pepwesto?' : 'Recommended Stall Spot'}</div>
+          <div class="font-bold text-sm">${recommendedViabilitySpot.name}</div>
+          <div class="text-gray-600">${language === 'tl' ? 'Kategorya' : 'Rating'}: <strong class="text-green-600">${language === 'tl' ? recommendedViabilitySpot.ratingTl : recommendedViabilitySpot.ratingEn} (${recommendedViabilitySpot.score}/100)</strong></div>
+          <div class="text-gray-600">${language === 'tl' ? 'Layo mula sa iyo' : 'Distance from you'}: <strong>~${recommendedViabilitySpot.distanceM} metro</strong></div>
+        </div>
+      `);
+    }
   }
 
   function handleRecenterGPS() {
-    if (map) {
-      map.flyTo([session.lat, session.lng], 16, { duration: 0.6 });
+    if (typeof window !== 'undefined' && 'geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          session.lat = Number(pos.coords.latitude.toFixed(5));
+          session.lng = Number(pos.coords.longitude.toFixed(5));
+          if (map) {
+            map.flyTo([session.lat, session.lng], 16, { duration: 0.6 });
+          }
+          renderMapElements();
+        },
+        (_err) => {
+          // IF GPS is off, denied, or timed out, gracefully just pin to the current location
+          if (map) {
+            map.flyTo([session.lat, session.lng], 16, { duration: 0.6 });
+          }
+          renderMapElements();
+        },
+        { timeout: 4000, enableHighAccuracy: true }
+      );
+    } else {
+      // IF GPS is off/unsupported, just pin to the location
+      if (map) {
+        map.flyTo([session.lat, session.lng], 16, { duration: 0.6 });
+      }
+      renderMapElements();
     }
   }
 
@@ -328,7 +443,7 @@
     isDarkMode ? 'bg-[#1A120B]/95 text-[#FAF7F2]' : 'bg-white/95 text-[#4A2E1B]'
   }`}>
     <div class="w-full max-w-7xl mx-auto h-16 sm:h-20 px-4 sm:px-6 flex items-center justify-between gap-3">
-      <!-- Leftmost: Logo (Prominent) + Directory Toggle + Vendor Drawer Toggle (if vendor) -->
+      <!-- Leftmost: Logo (Prominent) + Tindahan (if vendor) -->
       <div class="flex items-center gap-2.5 sm:gap-3.5 shrink-0">
         <button
           type="button"
@@ -339,62 +454,19 @@
           <Logo {isDarkMode} className="h-10 sm:h-12 w-auto object-contain" />
         </button>
 
-        <!-- Toggleable Sidebar Button -->
-        <button
-          type="button"
-          on:click={() => (isVendorListOpen = !isVendorListOpen)}
-          class={`px-2.5 sm:px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 text-xs font-black cursor-pointer shadow-xs active:scale-95 ${
-            isVendorListOpen
-              ? 'bg-[#4A2E1B] text-white'
-              : isDarkMode
-                ? 'bg-[#271A10] hover:bg-[#352317] text-[#FAF7F2]'
-                : 'bg-[#FAF7F2] hover:bg-[#EAE4D9] text-[#4A2E1B]'
-          }`}
-          title="Listahan ng Paninda"
-        >
-          <span>📋</span>
-          <span class="hidden sm:inline">{language === 'tl' ? 'Mga Paninda' : 'Vendors'}</span>
-          <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-[#D97706] text-white font-black">{filteredVendors.length}</span>
-        </button>
-
-        <!-- Toggleable Demand Hotspots Layer Button -->
-        <button
-          type="button"
-          on:click={() => {
-            isHotspotsVisible = !isHotspotsVisible;
-            if (isHotspotsVisible && demandHotspots.length === 0) {
-              reloadHotspots();
-            }
-          }}
-          class={`px-2.5 sm:px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 text-xs font-black cursor-pointer shadow-xs active:scale-95 ${
-            isHotspotsVisible
-              ? 'bg-[#EF4444] text-white shadow-xs'
-              : isDarkMode
-                ? 'bg-[#271A10] hover:bg-[#352317] text-[#FAF7F2]'
-                : 'bg-[#FAF7F2] hover:bg-[#EAE4D9] text-[#4A2E1B]'
-          }`}
-          title={language === 'tl' ? 'I-toggle ang Demand Hotspots' : 'Toggle Demand Hotspots'}
-        >
-          <span>🔥</span>
-          <span class="hidden sm:inline">{language === 'tl' ? 'Hotspots' : 'Hotspots'}</span>
-          <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-black/25 text-white font-black">{demandHotspots.length}</span>
-        </button>
-
         {#if session.role === 'vendor'}
           <button
             type="button"
-            on:click={() => (isSidebarOpen = !isSidebarOpen)}
-            class={`px-2.5 sm:px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 text-xs font-black cursor-pointer shadow-xs active:scale-95 ${
-              isSidebarOpen
-                ? 'bg-[#4A2E1B] text-white'
-                : isDarkMode
-                  ? 'bg-[#352317] hover:bg-[#4A2E1B] text-[#F59E0B]'
-                  : 'bg-[#FEF3C7] hover:bg-[#FDE68A] text-[#D97706]'
+            on:click={() => (onNavigateToVendor ? onNavigateToVendor() : null)}
+            class={`px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 text-xs font-black cursor-pointer shadow-xs active:scale-95 ${
+              isDarkMode
+                ? 'bg-[#352317] hover:bg-[#4A2E1B] text-[#F59E0B]'
+                : 'bg-[#FEF3C7] hover:bg-[#FDE68A] text-[#D97706]'
             }`}
-            title="Menu ng Tindero"
+            title={language === 'tl' ? 'Pumunta sa Dashboard ng Tindahan' : 'Vendor Dashboard'}
           >
             <span>🛒</span>
-            <span class="hidden sm:inline">{language === 'tl' ? 'Tindahan Mo' : 'Your Stall'}</span>
+            <span>{language === 'tl' ? 'Tindahan' : 'Stall'}</span>
           </button>
         {/if}
       </div>
@@ -447,6 +519,54 @@
       </div>
     </div>
   </header>
+
+  <!-- OVERLAID MAP CONTROLS: MGA PANINDA & HOTSPOTS OVERLAID DIRECTLY ON MAP -->
+  <div
+    class={`absolute top-20 sm:top-24 z-20 flex items-center gap-2 select-none pointer-events-auto transition-all duration-300 ${
+      isVendorListOpen
+        ? 'left-4 sm:left-[416px]'
+        : 'left-4 sm:left-6'
+    }`}
+  >
+    {#if !isVendorListOpen}
+      <button
+        type="button"
+        on:click={() => (isVendorListOpen = true)}
+        class={`px-3.5 py-2 rounded-2xl transition flex items-center gap-2 text-xs font-black cursor-pointer shadow-lg backdrop-blur-md active:scale-95 border ${
+          isDarkMode
+            ? 'bg-[#271A10]/95 hover:bg-[#352317] text-[#FAF7F2] border-white/10'
+            : 'bg-white/95 hover:bg-[#FAF7F2] text-[#4A2E1B] border-black/5'
+        }`}
+        title={language === 'tl' ? 'Ipakita ang Mga Paninda' : 'Show Vendors'}
+      >
+        <span class="text-sm">📋</span>
+        <span>{language === 'tl' ? 'Mga Paninda' : 'Vendors'}</span>
+        <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-[#D97706] text-white font-black">{filteredVendors.length}</span>
+      </button>
+    {/if}
+
+    <button
+      type="button"
+      on:click={() => {
+        isHotspotsVisible = !isHotspotsVisible;
+        if (isHotspotsVisible && demandHotspots.length === 0) {
+          reloadHotspots();
+        }
+      }}
+      class={`px-3.5 py-2 rounded-2xl transition flex items-center gap-2 text-xs font-black cursor-pointer shadow-lg backdrop-blur-md active:scale-95 border ${
+        isHotspotsVisible
+          ? 'bg-[#EF4444] text-white border-[#EF4444] shadow-red-500/20'
+          : isDarkMode
+            ? 'bg-[#271A10]/95 hover:bg-[#352317] text-[#FAF7F2] border-white/10'
+            : 'bg-white/95 hover:bg-[#FAF7F2] text-[#4A2E1B] border-black/5'
+      }`}
+      title={language === 'tl' ? 'I-toggle ang Demand Hotspots' : 'Toggle Demand Hotspots'}
+    >
+      <span class="text-sm">🔥</span>
+      <span>{language === 'tl' ? 'Hotspots' : 'Hotspots'}</span>
+      <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-black/25 text-white font-black">{demandHotspots.length}</span>
+    </button>
+  </div>
 
   <!-- FLOATING DEMAND HOTSPOT FILTER BAR -->
   {#if isHotspotsVisible}
