@@ -57,9 +57,40 @@
       const file = input.files[0];
       const reader = new FileReader();
       reader.onload = (event) => {
-        uploadedPhoto = event.target?.result as string;
+        const result = event.target?.result as string;
+        uploadedPhoto = result;
+        session.verifiedPhoto = result;
+        if (typeof window !== 'undefined' && localStorage) {
+          try {
+            const raw = localStorage.getItem('taho_user_session');
+            if (raw) {
+              const parsed = JSON.parse(raw);
+              parsed.verifiedPhoto = result;
+              localStorage.setItem('taho_user_session', JSON.stringify(parsed));
+            }
+          } catch (err) {
+            console.error('Failed to save photo to session', err);
+          }
+        }
       };
       reader.readAsDataURL(file);
+    }
+  }
+
+  function removePhoto() {
+    uploadedPhoto = null;
+    delete session.verifiedPhoto;
+    if (typeof window !== 'undefined' && localStorage) {
+      try {
+        const raw = localStorage.getItem('taho_user_session');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          delete parsed.verifiedPhoto;
+          localStorage.setItem('taho_user_session', JSON.stringify(parsed));
+        }
+      } catch (err) {
+        console.error('Failed to remove photo from session', err);
+      }
     }
   }
 </script>
@@ -402,29 +433,56 @@
       </button>
     </div>
 
-    <!-- Photo Verification Card -->
-    <div class={`p-5 rounded-[28px] shadow-sm space-y-3 ${
+    <!-- Take a Picture Card -->
+    <div class={`p-5 rounded-[28px] border shadow-sm space-y-3 ${
       isDarkMode ? 'bg-[#271A10] border-[#3D2717]' : 'bg-white border-[#EAE4D9]'
     }`}>
-      <h2 class="text-xs font-bold uppercase tracking-wider text-[#796658]">
-        {language === 'tl' ? 'Litrato ng Kaldero / Kariton:' : 'Verified Stall Photo:'}
+      <h2 class="text-base sm:text-lg font-black text-[#4A2E1B] dark:text-[#FAF7F2] tracking-tight">
+        {language === 'tl' ? 'Kumuha ng litrato' : 'Take a picture'}
       </h2>
 
       {#if uploadedPhoto}
-        <div class="flex items-center gap-3">
-          <img src={uploadedPhoto} alt="Kaldero" class="w-16 h-16 rounded-2xl object-cover border border-[#EAE4D9]" />
-          <div>
-            <span class="text-xs font-bold text-green-500">✓ Verified ng Komunidad</span>
-            <p class={`text-[11px] ${isDarkMode ? 'text-[#D6C7B2]' : 'text-[#796658]'}`}>
-              Ito ang nakikita ng mga bibili sa kanilang screen.
+        <div class="relative w-full rounded-2xl overflow-hidden border border-[#EAE4D9] dark:border-[#3D2717] bg-[#FAF7F2] dark:bg-[#1A120B] p-3.5 flex flex-col sm:flex-row items-center gap-4">
+          <img src={uploadedPhoto} alt="Kaldero / Kariton" class="w-full sm:w-28 h-28 rounded-xl object-cover shadow-sm shrink-0" />
+          <div class="flex-1 min-w-0 text-center sm:text-left space-y-1">
+            <span class="inline-flex items-center gap-1.5 text-xs font-black text-green-600 dark:text-green-400">
+              <span>✓</span>
+              <span>{language === 'tl' ? 'Verified na Litrato ng Pwesto' : 'Verified Stall Photo Active'}</span>
+            </span>
+            <p class={`text-[11px] leading-relaxed ${isDarkMode ? 'text-[#D6C7B2]' : 'text-[#796658]'}`}>
+              {language === 'tl'
+                ? 'Ito ang nakikitang litrato ng iyong kaldero o kariton ng mga suki sa mapa.'
+                : 'This photo of your cart or stall is shown to nearby buyers on the live map.'}
             </p>
+            <div class="pt-2 flex items-center justify-center sm:justify-start gap-2">
+              <label class="px-3.5 py-1.5 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1.5 shadow-xs active:scale-95 bg-[#D97706] hover:bg-[#B45309] text-white">
+                <Icon name="camera" size={14} />
+                <span>{language === 'tl' ? 'Kumuha Ulit' : 'Retake Picture'}</span>
+                <input type="file" accept="image/*" capture="environment" on:change={handlePhotoUpload} class="hidden" />
+              </label>
+
+              <button
+                type="button"
+                on:click={removePhoto}
+                class={`px-3 py-1.5 rounded-xl border text-xs font-bold transition cursor-pointer active:scale-95 ${
+                  isDarkMode ? 'border-[#3D2717] text-[#D6C7B2] hover:bg-[#352317]' : 'border-[#EAE4D9] text-[#796658] hover:bg-[#FAF7F2]'
+                }`}
+              >
+                {language === 'tl' ? 'Tanggalin' : 'Remove'}
+              </button>
+            </div>
           </div>
         </div>
       {:else}
-        <label class="p-4 rounded-2xl bg-[#FAF7F2] dark:bg-[#352317] border border-dashed border-[#EAE4D9] dark:border-[#3D2717] flex items-center justify-center gap-2 cursor-pointer text-xs font-bold">
-          <span>📷</span>
-          <span>{language === 'tl' ? 'Kumuha o Mag-upload ng Litrato' : 'Upload Stall Photo'}</span>
-          <input type="file" accept="image/*" on:change={handlePhotoUpload} class="hidden" />
+        <!-- Dashed Box Matching Screenshot with Camera Trigger -->
+        <label class="w-full py-9 px-4 rounded-2xl border-2 border-dashed border-[#EAE4D9] dark:border-[#3D2717] hover:border-[#D97706] dark:hover:border-[#F59E0B] bg-[#FAF7F2]/60 dark:bg-[#1A120B]/40 hover:bg-[#FAF7F2] dark:hover:bg-[#20140B] transition-all flex flex-col items-center justify-center gap-2 cursor-pointer text-center group active:scale-[0.99]">
+          <div class="text-[#796658] dark:text-[#D6C7B2] group-hover:text-[#D97706] dark:group-hover:text-[#F59E0B] group-hover:scale-110 transition-transform">
+            <Icon name="camera" size={32} strokeWidth={1.8} />
+          </div>
+          <span class="text-xs sm:text-sm font-semibold text-[#796658] dark:text-[#D6C7B2] group-hover:text-[#4A2E1B] dark:group-hover:text-[#FAF7F2] transition-colors">
+            {language === 'tl' ? 'Kumuha ng litrato o mag-browse ng files' : 'Take a picture or browse files'}
+          </span>
+          <input type="file" accept="image/*" capture="environment" on:change={handlePhotoUpload} class="hidden" />
         </label>
       {/if}
     </div>
