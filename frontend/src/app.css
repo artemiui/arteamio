@@ -48,6 +48,31 @@ body.dark .leaflet-container {
   background-color: #120C07 !important;
 }
 
+/* OpenStreetMap Foundation & CARTO Attribution Guidelines styling */
+.leaflet-control-attribution {
+  background: rgba(255, 255, 255, 0.88) !important;
+  color: #4A2E1B !important;
+  font-size: 11px !important;
+  padding: 3px 8px !important;
+  border-top-left-radius: 8px !important;
+  font-weight: 500 !important;
+}
+
+.leaflet-control-attribution a {
+  color: #D97706 !important;
+  font-weight: 700 !important;
+  text-decoration: underline !important;
+}
+
+body.dark .leaflet-control-attribution {
+  background: rgba(39, 26, 16, 0.92) !important;
+  color: #FAF7F2 !important;
+}
+
+body.dark .leaflet-control-attribution a {
+  color: #F59E0B !important;
+}
+
 .leaflet-control-zoom {
   border: 1px solid var(--color-border) !important;
   border-radius: 1rem !important;

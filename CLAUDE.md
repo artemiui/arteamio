@@ -1,7 +1,6 @@
 # CLAUDE.md — PwestoRadar Project Reference & Architecture Guide
 
 > **Project:** PwestoRadar  
-> **Event:** UST CSSPrint 2026  
 > **Repository:** `arteamio`  
 > **Target Audience:** Filipino MSMEs, food cart operators, roving street vendors (*taho*, *balot*, *siomai*, etc.), and neighborhood consumers.
 
@@ -9,7 +8,7 @@
 
 ## 1. Executive Summary
 
-**PwestoRadar** is a hyperlocal spatial intelligence and real-time vendor discovery platform built for the Philippine informal and micro-retail street economy. Over 99% of registered businesses in the Philippines are MSMEs. Street-level entrepreneurs—from stationary pop-up kiosks to roving peddlers (*magtataho*, *balut*, *siomai* vendors)—routinely suffer lost revenue and early stall closures due to location mismatch, lack of foot-traffic data, and missed customer opportunities.
+**PwestoRadar** is a hyperlocal spatial intelligence and real-time vendor discovery platform built for the Philippine informal and micro-retail street economy. Over 99% of registered businesses in the Philippines are MSMEs. Street-level entrepreneurs—from stationary pop-up kiosks to roving peddlers (*magtataho*, *balot*, *siomai* vendors)—routinely suffer lost revenue and early stall closures due to location mismatch, lack of foot-traffic data, and missed customer opportunities.
 
 PwestoRadar bridges this gap through a consumer & vendor map experience inspired by **Sakay.ph**, **Angkas**, and **Google Maps**:
 1. **Simple Sakay.ph / Angkas Style Landing:** Welcoming entry page with a primary **"Magsimula"** CTA prompting users: **"Bibili"** or **"Magbebenta?"**.
@@ -74,7 +73,7 @@ The UI is inspired by **Facebook's intuitive simplicity** and **Google Maps' ful
    * **Light Mode Logo:** [pwesto_default.svg](file:///C:/Users/Art/Documents/arteamio/public/assets/pwesto_default.svg) (`/assets/pwesto_default.svg`).
    * **Dark Mode Logo:** [pwesto_dark.svg](file:///C:/Users/Art/Documents/arteamio/public/assets/pwesto_dark.svg) (`/assets/pwesto_dark.svg`).
    * One-tap dark mode toggle (☀️ / 🌙) accessible from the landing page, map search bar, and vendor sidebar.
-   * Dynamically toggles CartoDB Dark Matter / Voyager map tiles.
+   * Dynamically switches between CARTO Positron (clean, POI/establishment-free OSM tiles) and CARTO Dark Matter, modeled after the minimalist, uncluttered aesthetic of apps like Lyfsaver PH.
 
 ### 3.2 Visual Legend (No City Dropdown Clutter)
 Instead of dividing by city dropdowns, the map displays all nearby vendors universally with an intuitive visual legend bar:
@@ -113,7 +112,7 @@ Where:
 ## 5. System Architecture & Tech Stack
 
 * **Frontend:** Svelte 5 + Vite + Tailwind CSS (Mobile-first PWA, ultra-fast bundle).
-* **Mapping:** Leaflet with CartoDB Positron/Voyager tiles.
+* **Mapping:** Leaflet with high-readability, establishment-free **OpenStreetMap-derived basemaps** (CARTO Positron for Light, CARTO Dark Matter for Dark; strips noisy commercial POIs/shops for maximum street-food pin focus, matching the clean style of Lyfsaver PH) adhering strictly to the [OSMF Attribution Guidelines](https://osmfoundation.org/wiki/Licence/Attribution_Guidelines) with clickable links to [OpenStreetMap Copyright](https://www.openstreetmap.org/copyright) and [CARTO](https://carto.com/attributions).
 * **Storage:** `localStorage` for returning user session persistence (`pwestoradar_session`).
 * **Backend Target:** Python (FastAPI) + PostgreSQL / PostGIS + Redis for live GPS coordinate broadcasting.
 
@@ -129,3 +128,5 @@ Where:
 - [x] Universal product legend (🥣, 🥡, 🥚, ⭐).
 - [x] Vendor slide-over sidebar / bottom drawer (Facebook UI simplicity).
 - [x] Pure mobile responsiveness and thumb-friendly controls.
+- [x] OpenStreetMap Foundation attribution compliance with clickable copyright links.
+- [x] Simplified establishment-free map tiles (POI-free basemap like Lyfsaver PH for uncluttered street food visibility).
