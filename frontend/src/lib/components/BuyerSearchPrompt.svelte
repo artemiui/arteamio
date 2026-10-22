@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import type { Language } from '../types';
+  import { searchOSM, type OSMSearchResult } from '../services/osmGeocoding';
 
   export let language: Language = 'tl';
   export let onConfirmLocation: (locationName: string, lat: number, lng: number) => void;
@@ -12,10 +13,59 @@
   let isDetectingGPS: boolean = false;
   let gpsStatus: 'active' | 'denied' | 'idle' = 'idle';
 
+  // OSM Search
+  let osmResults: OSMSearchResult[] = [];
+  let isSearchingOSM: boolean = false;
+  let searchDebounceTimer: any = null;
+
   onMount(() => {
     // Attempt automatic GPS on entry
     requestGPS();
   });
+
+  function handleInput(e: Event) {
+    const val = (e.target as HTMLInputElement).value;
+    searchQuery = val;
+
+    clearTimeout(searchDebounceTimer);
+    if (!val || val.trim().length < 2) {
+      osmResults = [];
+      isSearchingOSM = false;
+      return;
+    }
+
+    isSearchingOSM = true;
+    searchDebounceTimer = setTimeout(async () => {
+      osmResults = await searchOSM(val);
+      isSearchingOSM = false;
+    }, 280);
+  }
+
+  function selectOSM(res: OSMSearchResult) {
+    detectedLat = res.lat;
+    detectedLng = res.lng;
+    searchQuery = res.subtitle ? `${res.name}, ${res.subtitle}` : res.name;
+    osmResults = [];
+    handleSubmit();
+  }
+
+  async function handleKeyDown(e: KeyboardEvent) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (osmResults.length > 0) {
+        selectOSM(osmResults[0]);
+      } else if (searchQuery.trim().length >= 2) {
+        isSearchingOSM = true;
+        const res = await searchOSM(searchQuery);
+        isSearchingOSM = false;
+        if (res.length > 0) {
+          selectOSM(res[0]);
+        } else {
+          handleSubmit();
+        }
+      }
+    }
+  }
 
   function requestGPS() {
     if (typeof window !== 'undefined' && 'geolocation' in navigator) {
@@ -27,11 +77,11 @@
           detectedLat = Number(pos.coords.latitude.toFixed(5));
           detectedLng = Number(pos.coords.longitude.toFixed(5));
           searchQuery = language === 'tl' ? 'Aking Kasalukuyang Lokasyon (GPS)' : 'My Current Location (GPS)';
+          osmResults = [];
         },
         () => {
           isDetectingGPS = false;
           gpsStatus = 'denied';
-          // Keep default central location
         },
         { timeout: 7000 }
       );
@@ -52,6 +102,7 @@
     searchQuery = spot.name;
     detectedLat = spot.lat;
     detectedLng = spot.lng;
+    osmResults = [];
   }
 
   function handleSubmit() {
@@ -60,7 +111,7 @@
 </script>
 
 <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#4A2E1B]/60 backdrop-blur-sm animate-fade-in">
-  <div class="bg-white w-full max-w-lg rounded-[36px] border border-[#EAE4D9] shadow-2xl p-6 sm:p-8 space-y-6 text-[#4A2E1B]">
+  <div class="bg-white w-full max-w-lg rounded-[36px] border border-[#EAE4D9] shadow-2xl p-6 sm:p-8 space-y-6 text-[#4A2E1B] max-h-[92vh] overflow-y-auto">
     <!-- Header -->
     <div class="text-center space-y-1">
       <span class="text-3xl">🥣</span>
@@ -69,8 +120,8 @@
       </h2>
       <p class="text-xs sm:text-sm text-[#796658] font-medium">
         {language === 'tl'
-          ? 'Naka-set ito sa iyong GPS para makita mo agad ang mga naglalako sa tapat mo.'
-          : 'Defaulted to your GPS so you can instantly see nearby roving carts.'}
+          ? 'Maghanap ng lugar gamit ang OpenStreetMap (hal. UP Diliman) o gamitin ang GPS.'
+          : 'Search any location via OpenStreetMap (e.g. UP Diliman) or use GPS.'}
       </p>
     </div>
 
@@ -82,8 +133,10 @@
         </div>
         <input
           type="text"
-          bind:value={searchQuery}
-          placeholder={language === 'tl' ? 'I-type ang kalye o lugar...' : 'Type street or neighborhood...'}
+          value={searchQuery}
+          on:input={handleInput}
+          on:keydown={handleKeyDown}
+          placeholder={language === 'tl' ? 'I-type ang kalye o lugar (hal. UP Diliman)...' : 'Type place (e.g. UP Diliman)...'}
           class="w-full pl-12 pr-12 py-4 rounded-2xl bg-[#FAF7F2] border-2 border-[#EAE4D9] focus:border-[#4A2E1B] text-sm sm:text-base font-bold text-[#4A2E1B] outline-none shadow-inner"
         />
         <!-- GPS Re-detect Button inside input -->
@@ -93,9 +146,37 @@
           title={language === 'tl' ? 'Gamitin ang GPS' : 'Use GPS'}
           class="absolute inset-y-0 right-0 pr-4 flex items-center text-lg text-[#D97706] hover:scale-110 transition cursor-pointer"
         >
-          {isDetectingGPS ? '⏳' : '🎯'}
+          {isDetectingGPS ? '⏳' : isSearchingOSM ? '🔄' : '🎯'}
         </button>
       </div>
+
+      <!-- Real-time OSM Results Dropdown -->
+      {#if isSearchingOSM}
+        <div class="p-2 text-center text-xs font-bold text-[#D97706] flex items-center justify-center gap-2">
+          <span class="animate-spin">🔄</span>
+          <span>Naghahanap sa OpenStreetMap...</span>
+        </div>
+      {:else if osmResults.length > 0}
+        <div class="rounded-2xl border border-[#EAE4D9] bg-[#FAF7F2] p-2 space-y-1 shadow-sm max-h-48 overflow-y-auto">
+          <div class="px-2 pt-1 text-[10px] font-black uppercase text-[#D97706]">
+            OpenStreetMap:
+          </div>
+          {#each osmResults as res}
+            <button
+              type="button"
+              on:click={() => selectOSM(res)}
+              class="w-full p-2 rounded-xl text-left hover:bg-white flex items-start gap-2 transition cursor-pointer"
+            >
+              <span class="text-sm mt-0.5">📍</span>
+              <div class="truncate flex-1">
+                <p class="text-xs font-black truncate">{res.name}</p>
+                <p class="text-[10px] text-[#796658] truncate">{res.subtitle}</p>
+              </div>
+              <span class="text-[10px] font-bold text-[#D97706] self-center">Piliin →</span>
+            </button>
+          {/each}
+        </div>
+      {/if}
 
       {#if gpsStatus === 'active'}
         <div class="text-[11px] text-[#D97706] font-bold flex items-center gap-1.5 px-2">
@@ -124,31 +205,31 @@
             class={`px-3 py-1.5 rounded-full border text-xs font-semibold transition cursor-pointer ${
               searchQuery === spot.name
                 ? 'bg-[#4A2E1B] text-white border-[#4A2E1B]'
-                : 'bg-white text-[#4A2E1B] border-[#EAE4D9] hover:bg-[#FAF7F2]'
+                : 'bg-[#FAF7F2] text-[#4A2E1B] border-[#EAE4D9] hover:bg-[#F3EDE2]'
             }`}
           >
-            📍 {spot.name}
+            {spot.name}
           </button>
         {/each}
       </div>
     </div>
 
-    <!-- Actions -->
-    <div class="flex items-center gap-2 pt-2">
+    <!-- Action Buttons -->
+    <div class="flex items-center gap-3 pt-2">
       <button
         type="button"
         on:click={onBack}
-        class="px-5 py-3.5 rounded-2xl border border-[#EAE4D9] bg-white text-xs font-bold text-[#796658] hover:bg-[#FAF7F2] transition cursor-pointer min-h-[48px]"
+        class="flex-1 py-4 rounded-2xl border border-[#EAE4D9] text-[#796658] font-bold text-sm hover:bg-[#FAF7F2] transition cursor-pointer text-center"
       >
-        ← {language === 'tl' ? 'Bumalik' : 'Back'}
+        {language === 'tl' ? 'Bumalik' : 'Back'}
       </button>
 
       <button
         type="button"
         on:click={handleSubmit}
-        class="flex-1 py-3.5 px-6 rounded-2xl bg-[#4A2E1B] text-[#FAF7F2] hover:bg-[#361F11] font-black text-sm sm:text-base shadow-md transition cursor-pointer min-h-[48px] flex items-center justify-center gap-2 active:scale-98"
+        class="flex-2 py-4 rounded-2xl bg-[#4A2E1B] text-white font-extrabold text-sm shadow-md hover:bg-[#361F11] transition flex items-center justify-center gap-2 cursor-pointer"
       >
-        <span>{language === 'tl' ? 'Tingnan ang Mapa' : 'View Live Map'}</span>
+        <span>{language === 'tl' ? 'Pumunta sa Mapa' : 'View on Map'}</span>
         <span>→</span>
       </button>
     </div>

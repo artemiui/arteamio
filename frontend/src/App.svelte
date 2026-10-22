@@ -17,7 +17,7 @@
   import VendorOnboardingPrompt from './lib/components/VendorOnboardingPrompt.svelte';
   import RoleSwitchModal from './lib/components/RoleSwitchModal.svelte';
 
-  const SESSION_KEY = 'pwestoradar_session';
+  const SESSION_KEY = 'pwesto_session';
 
   // Global App States
   let currentRoute: PageRoute = 'landing';
@@ -41,7 +41,7 @@
 
   onMount(() => {
     // 1. Theme initialization
-    const savedTheme = localStorage.getItem('pwestoradar_theme');
+    const savedTheme = localStorage.getItem('pwesto_theme') || localStorage.getItem('pwestoradar_theme');
     if (savedTheme === 'dark' || (!savedTheme && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
       setDarkMode(true);
     } else {
@@ -49,7 +49,7 @@
     }
 
     // 2. Load Session from LocalStorage
-    const savedSession = localStorage.getItem(SESSION_KEY);
+    const savedSession = localStorage.getItem(SESSION_KEY) || localStorage.getItem('pwestoradar_session');
     if (savedSession) {
       try {
         const parsed: UserSession = JSON.parse(savedSession);
@@ -87,7 +87,7 @@
       document.body.classList.toggle('dark', enabled);
     }
     if (typeof localStorage !== 'undefined') {
-      localStorage.setItem('pwestoradar_theme', enabled ? 'dark' : 'light');
+      localStorage.setItem('pwesto_theme', enabled ? 'dark' : 'light');
     }
   }
 

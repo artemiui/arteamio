@@ -92,8 +92,8 @@
       </h1>
       <p class={`text-xs sm:text-sm mt-1 font-medium ${isDarkMode ? 'text-[#D6C7B2]' : 'text-[#796658]'}`}>
         {language === 'tl'
-          ? 'I-customize ang hitsura, wika, tunog, at lokasyon ng iyong PwestoRadar.'
-          : 'Customize appearance, language, audio alerts, and location.'}
+          ? 'I-customize ang hitsura, wika, tunog, at lokasyon ng iyong Pwesto.'
+          : 'Customize appearance, language, audio alerts, and location for Pwesto.'}
       </p>
     </div>
 
@@ -258,14 +258,12 @@
       <section class={`p-5 rounded-[28px] border space-y-2 ${
         isDarkMode ? 'bg-[#271A10] border-[#3D2717]' : 'bg-white border-[#EAE4D9]'
       }`}>
-        <h2 class="text-sm font-extrabold">{language === 'tl' ? 'Tungkol sa PwestoRadar' : 'About PwestoRadar'}</h2>
+        <h2 class="text-sm font-extrabold">{language === 'tl' ? 'Tungkol sa Pwesto' : 'About Pwesto'}</h2>
         <p class={`text-xs font-medium leading-relaxed ${isDarkMode ? 'text-[#D6C7B2]' : 'text-[#796658]'}`}>
           Ang layunin ng proyektong ito ay bigyan ng abot-kamay na spatial intelligence at real-time radar ang mga maninindang Pilipino at kanilang mga suki saan mang panig ng bansa.
         </p>
         <div class="pt-2 flex items-center gap-3 text-[11px] text-[#D97706] font-bold">
           <span>Bersyon 1.0.0</span>
-          <span>•</span>
-          <span>Taho UI Design System</span>
         </div>
       </section>
 

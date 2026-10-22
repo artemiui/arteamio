@@ -21,7 +21,7 @@
       <div>
         <div class="flex items-center gap-2">
           <span class="text-xl font-extrabold tracking-tight text-[#4A2E1B] leading-none">
-            PwestoRadar
+            Pwesto
           </span>
           {#if userProfile}
             <button

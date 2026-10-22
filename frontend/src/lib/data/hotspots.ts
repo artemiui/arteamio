@@ -294,12 +294,12 @@ export function getBaseHotspotsAround(centerLat: number, centerLng: number): Dem
   ];
 }
 
-const STORAGE_KEY = 'pwestoradar_custom_hotspots';
+const STORAGE_KEY = 'pwesto_custom_hotspots';
 
 export function loadCustomHotspots(): DemandHotspot[] {
   if (typeof window === 'undefined') return [];
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('pwestoradar_custom_hotspots');
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed : [];

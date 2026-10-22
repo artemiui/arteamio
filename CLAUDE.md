@@ -119,7 +119,7 @@ Where:
 
 * **Frontend:** Svelte 5 + Vite + Tailwind CSS (Mobile-first PWA, ultra-fast bundle).
 * **Mapping:** Leaflet with official **OpenStreetMap** tile server (`https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png`). Strictly NO third-party Carto tile layers. Adheres 100% to the [OSMF Attribution Guidelines](https://osmfoundation.org/wiki/Licence/Attribution_Guidelines) with clickable links to [OpenStreetMap Copyright](https://www.openstreetmap.org/copyright). Establishment/POI visual noise is attenuated via tailored Leaflet tile-pane CSS filters to deliver the clean, minimalist look inspired by Lyfsaver PH.
-* **Storage:** `localStorage` for returning user session persistence (`pwestoradar_session`).
+* **Storage:** `localStorage` for returning user session persistence (`pwesto_session`).
 * **Backend Target:** Python (FastAPI) + PostgreSQL / PostGIS + Redis for live GPS coordinate broadcasting.
 
 ---

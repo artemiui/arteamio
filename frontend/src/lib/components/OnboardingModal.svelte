@@ -140,7 +140,7 @@
 
     // Save to localStorage for return visits
     if (typeof window !== 'undefined') {
-      localStorage.setItem('pwestoradar_profile', JSON.stringify(profile));
+      localStorage.setItem('pwesto_profile', JSON.stringify(profile));
     }
 
     onComplete(profile);
@@ -154,7 +154,7 @@
     <div class="text-center space-y-2">
       <div class="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#FEF3C7] text-[#D97706] text-xs font-bold border border-[#D97706]/20">
         <span>🇵🇭</span>
-        <span>{language === 'tl' ? 'Maligayang Pagdating sa PwestoRadar' : 'Welcome to PwestoRadar'}</span>
+        <span>{language === 'tl' ? 'Maligayang Pagdating sa Pwesto' : 'Welcome to Pwesto'}</span>
       </div>
       <h2 class="text-2xl sm:text-3xl font-black text-[#4A2E1B] tracking-tight">
         {step === 'role'

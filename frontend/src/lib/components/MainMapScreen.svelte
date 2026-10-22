@@ -42,13 +42,24 @@
   let selectedVendor: TaggedVendor | null = null;
 
   // Huff Gravity Model Viability Evaluation for Vendor
-  let anchors = generateAnchorsAround(session.lat, session.lng);
-  let competitors = generateCompetitorsAround(session.lat, session.lng);
+  $: anchors = generateAnchorsAround(session.lat, session.lng);
+  $: competitors = generateCompetitorsAround(session.lat, session.lng);
   let selectedArchetype = BUSINESS_ARCHETYPES.find((a) => a.id === session.product?.toLowerCase()) || BUSINESS_ARCHETYPES[2];
   $: viability = evaluateLocationViability(session.lat, session.lng, selectedArchetype, anchors, competitors);
 
   let viabilityMarker: L.Marker | null = null;
   let viabilityLine: L.Polyline | null = null;
+
+  // React to external session coordinates update (e.g. searching OSM location)
+  let currentSessionLat = session.lat;
+  let currentSessionLng = session.lng;
+  $: if (map && (session.lat !== currentSessionLat || session.lng !== currentSessionLng)) {
+    currentSessionLat = session.lat;
+    currentSessionLng = session.lng;
+    map.flyTo([session.lat, session.lng], 16, { duration: 0.6 });
+    reloadHotspots();
+    renderMapElements();
+  }
 
   // Recommended viability spot for vendor ("Saan Magandang Pepwesto")
   $: recommendedViabilitySpot = (() => {
@@ -442,9 +453,9 @@
   <header class={`absolute top-0 inset-x-0 z-30 w-full backdrop-blur-md shadow-sm transition-colors ${
     isDarkMode ? 'bg-[#1A120B]/95 text-[#FAF7F2]' : 'bg-white/95 text-[#4A2E1B]'
   }`}>
-    <div class="w-full max-w-7xl mx-auto h-16 sm:h-20 px-4 sm:px-6 flex items-center justify-between gap-3">
+    <div class="relative w-full max-w-7xl mx-auto h-16 sm:h-20 px-4 sm:px-6 flex items-center justify-between gap-3">
       <!-- Leftmost: Logo (Prominent) + Tindahan (if vendor) -->
-      <div class="flex items-center gap-2.5 sm:gap-3.5 shrink-0">
+      <div class="flex items-center gap-2.5 sm:gap-3.5 shrink-0 z-10">
         <button
           type="button"
           on:click={() => (onNavigateToLanding ? onNavigateToLanding() : null)}
@@ -471,24 +482,26 @@
         {/if}
       </div>
 
-      <!-- Center: Location Search Button -->
-      <button
-        type="button"
-        on:click={() => (onNavigateToSearch ? onNavigateToSearch() : handleRecenterGPS())}
-        class={`flex-1 max-w-sm sm:max-w-md flex items-center justify-center sm:justify-start gap-2 px-3.5 py-2.5 rounded-xl transition text-left cursor-pointer truncate shadow-xs ${
-          isDarkMode
-            ? 'bg-[#271A10] hover:bg-[#352317] text-[#FAF7F2]'
-            : 'bg-[#FAF7F2] hover:bg-[#F3EDE2] text-[#4A2E1B]'
-        }`}
-        title="Pindutin para magpalit ng lugar"
-      >
-        <span class="text-xs sm:text-sm font-extrabold truncate">
-          {session.locationName}
-        </span>
-      </button>
+      <!-- Center: Location Selector (Centered on Topbar) -->
+      <div class="absolute inset-x-0 mx-auto max-w-xs sm:max-w-md flex items-center justify-center pointer-events-none px-4">
+        <button
+          type="button"
+          on:click={() => (onNavigateToSearch ? onNavigateToSearch() : handleRecenterGPS())}
+          class={`pointer-events-auto flex items-center justify-center gap-2 px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl transition text-center cursor-pointer shadow-xs max-w-full ${
+            isDarkMode
+              ? 'bg-[#271A10] hover:bg-[#352317] text-[#FAF7F2]'
+              : 'bg-[#FAF7F2] hover:bg-[#F3EDE2] text-[#4A2E1B]'
+          }`}
+          title="Pindutin para magpalit ng lugar"
+        >
+          <span class="text-xs sm:text-sm font-extrabold truncate text-center">
+            {session.locationName}
+          </span>
+        </button>
+      </div>
 
       <!-- Rightmost: Role Badge & Settings Button -->
-      <div class="flex items-center gap-2 shrink-0">
+      <div class="flex items-center gap-2 shrink-0 z-10">
         <!-- Role Badge -->
         <div
           class={`px-2.5 py-1.5 rounded-xl text-[11px] font-black shrink-0 ${
@@ -520,15 +533,9 @@
     </div>
   </header>
 
-  <!-- OVERLAID MAP CONTROLS: MGA PANINDA & HOTSPOTS OVERLAID DIRECTLY ON MAP -->
-  <div
-    class={`absolute top-20 sm:top-24 z-20 flex items-center gap-2 select-none pointer-events-auto transition-all duration-300 ${
-      isVendorListOpen
-        ? 'left-4 sm:left-[416px]'
-        : 'left-4 sm:left-6'
-    }`}
-  >
-    {#if !isVendorListOpen}
+  <!-- OVERLAID MAP CONTROLS: MGA PANINDA OVERLAID DIRECTLY ON MAP (HOTSPOTS BUTTON REMOVED) -->
+  {#if !isVendorListOpen}
+    <div class="absolute top-20 sm:top-24 left-4 sm:left-6 z-20 flex items-center gap-2 select-none pointer-events-auto animate-fade-in">
       <button
         type="button"
         on:click={() => (isVendorListOpen = true)}
@@ -543,38 +550,15 @@
         <span>{language === 'tl' ? 'Mga Paninda' : 'Vendors'}</span>
         <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-[#D97706] text-white font-black">{filteredVendors.length}</span>
       </button>
-    {/if}
+    </div>
+  {/if}
 
-    <button
-      type="button"
-      on:click={() => {
-        isHotspotsVisible = !isHotspotsVisible;
-        if (isHotspotsVisible && demandHotspots.length === 0) {
-          reloadHotspots();
-        }
-      }}
-      class={`px-3.5 py-2 rounded-2xl transition flex items-center gap-2 text-xs font-black cursor-pointer shadow-lg backdrop-blur-md active:scale-95 border ${
-        isHotspotsVisible
-          ? 'bg-[#EF4444] text-white border-[#EF4444] shadow-red-500/20'
-          : isDarkMode
-            ? 'bg-[#271A10]/95 hover:bg-[#352317] text-[#FAF7F2] border-white/10'
-            : 'bg-white/95 hover:bg-[#FAF7F2] text-[#4A2E1B] border-black/5'
-      }`}
-      title={language === 'tl' ? 'I-toggle ang Demand Hotspots' : 'Toggle Demand Hotspots'}
-    >
-      <span class="text-sm">🔥</span>
-      <span>{language === 'tl' ? 'Hotspots' : 'Hotspots'}</span>
-      <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-black/25 text-white font-black">{demandHotspots.length}</span>
-    </button>
-  </div>
-
-  <!-- FLOATING DEMAND HOTSPOT FILTER BAR -->
-  {#if isHotspotsVisible}
-    <div
-      class={`absolute top-18 sm:top-22 inset-x-3 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 z-20 flex items-center justify-center gap-1.5 p-1.5 rounded-2xl backdrop-blur-md shadow-lg border overflow-x-auto max-w-[95vw] pointer-events-auto transition-colors animate-fade-in ${
-        isDarkMode ? 'bg-[#1A120B]/95 border-[#3D2717] text-[#FAF7F2]' : 'bg-white/95 border-[#EAE4D9] text-[#4A2E1B]'
-      }`}
-    >
+  <!-- FLOATING DEMAND HOTSPOT FILTER BAR (WITH TEXTLESS HOTSPOTS TOGGLE NEXT TO MAG ULAT) -->
+  <div
+    class={`absolute top-18 sm:top-22 inset-x-3 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 z-20 flex items-center justify-center gap-1.5 p-1.5 rounded-2xl backdrop-blur-md shadow-lg border overflow-x-auto max-w-[95vw] pointer-events-auto transition-colors animate-fade-in ${
+      isDarkMode ? 'bg-[#1A120B]/95 border-[#3D2717] text-[#FAF7F2]' : 'bg-white/95 border-[#EAE4D9] text-[#4A2E1B]'
+    }`}
+  >
       <button
         type="button"
         on:click={() => (activeHotspotCategory = 'all')}
@@ -650,8 +634,31 @@
         <span>➕</span>
         <span>{language === 'tl' ? 'Mag-ulat' : 'Add'}</span>
       </button>
+
+      <!-- Textless Hotspots Toggle next to Mag Ulat -->
+      <button
+        type="button"
+        on:click={() => {
+          isHotspotsVisible = !isHotspotsVisible;
+          if (isHotspotsVisible && demandHotspots.length === 0) {
+            reloadHotspots();
+          }
+        }}
+        class={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center text-sm font-black transition cursor-pointer active:scale-95 border ${
+          isHotspotsVisible
+            ? 'bg-[#EF4444] text-white border-[#EF4444] shadow-xs'
+            : isDarkMode
+              ? 'bg-[#271A10] text-[#796658] hover:text-[#FAF7F2] border-white/10'
+              : 'bg-[#FAF7F2] text-[#796658] hover:text-[#4A2E1B] border-black/5'
+        }`}
+        title={isHotspotsVisible
+          ? (language === 'tl' ? 'I-off ang Hotspots' : 'Hide Hotspots')
+          : (language === 'tl' ? 'I-on ang Hotspots' : 'Show Hotspots')}
+        aria-label="Toggle Hotspots"
+      >
+        <span>🔥</span>
+      </button>
     </div>
-  {/if}
 
   <!-- TOGGLEABLE MOBILE SIDEBAR / FLOATING DESKTOP PANEL -->
   {#if isVendorListOpen}
@@ -922,10 +929,32 @@
           <button
             type="button"
             on:click={() => (showHotspotConfigModal = true)}
-            class="px-2 py-1 rounded-xl text-[11px] font-black bg-[#D97706]/15 hover:bg-[#D97706]/25 text-[#D97706] shrink-0 cursor-pointer"
+            class="px-2 py-1 rounded-xl text-[11px] font-black bg-[#D97706]/15 hover:bg-[#D97706]/25 text-[#D97706] shrink-0 cursor-pointer active:scale-95"
             title="Magdagdag ng Event"
           >
             ➕ {language === 'tl' ? 'Mag-ulat' : 'Add'}
+          </button>
+
+          <!-- Textless Hotspots Toggle in Sidebar next to Mag Ulat -->
+          <button
+            type="button"
+            on:click={() => {
+              isHotspotsVisible = !isHotspotsVisible;
+              if (isHotspotsVisible && demandHotspots.length === 0) {
+                reloadHotspots();
+              }
+            }}
+            class={`w-6 h-6 rounded-lg flex items-center justify-center text-xs transition cursor-pointer active:scale-95 border ${
+              isHotspotsVisible
+                ? 'bg-[#EF4444] text-white border-[#EF4444]'
+                : isDarkMode
+                  ? 'bg-[#271A10] text-[#796658] border-white/10'
+                  : 'bg-[#FAF7F2] text-[#796658] border-black/5'
+            }`}
+            title={isHotspotsVisible ? 'Hide Hotspots' : 'Show Hotspots'}
+            aria-label="Toggle Hotspots Layer"
+          >
+            🔥
           </button>
         </div>
 

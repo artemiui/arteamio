@@ -59,8 +59,8 @@
       {#if targetRole === 'vendor'}
         <p>
           {language === 'tl'
-            ? 'Upang maging opisyal na Tindero sa PwestoRadar, kakailanganin mong pumili ng iyong paninda (Taho, Siomai, Balut, atbp.) at mag-upload ng larawan ng iyong kaldero o kariton upang ma-verify ng mga suki.'
-            : 'To become a verified Vendor on PwestoRadar, you will need to select your products and submit a photo of your stall or cart for verification.'}
+            ? 'Upang maging opisyal na Tindero sa Pwesto, kakailanganin mong pumili ng iyong paninda (Taho, Siomai, Balut, atbp.) at mag-upload ng larawan ng iyong kaldero o kariton upang ma-verify ng mga suki.'
+            : 'To become a verified Vendor on Pwesto, you will need to select your products and submit a photo of your stall or cart for verification.'}
         </p>
       {:else}
         <p>
