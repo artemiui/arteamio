@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import type { Language, ProductType, TaggedVendor, UserRole, UserSession } from './lib/types';
   import { generateTaggedVendorsAround } from './lib/data/spots';
+  import { getLiveVendors, registerVendorOnBackend, connectLiveRadarWebSocket } from './lib/api';
   import { router, type PageRoute } from './lib/router';
 
   // Pages
@@ -34,6 +35,19 @@
   let showVendorPrompt: boolean = false;
   let showRoleSwitchModal: boolean = false;
 
+  async function loadVendors(lat: number, lng: number) {
+    activeVendors = generateTaggedVendorsAround(lat, lng);
+    try {
+      const live = await getLiveVendors(lat, lng);
+      if (live && live.length > 0) {
+        activeVendors = live;
+      }
+    } catch {
+      // keep fallback vendors
+    }
+  }
+
+
   // Subscribe to hash router
   router.subscribe((route) => {
     currentRoute = route;
@@ -49,6 +63,23 @@
     }
 
     // 2. Load Session from LocalStorage
+
+    // 3. Connect to Real-time Radar WebSocket
+    const unsubscribeWs = connectLiveRadarWebSocket((eventData) => {
+      if (!eventData || !eventData.id) return;
+      activeVendors = activeVendors.map((v) => {
+        if (v.id === eventData.id) {
+          return {
+            ...v,
+            lat: eventData.lat ?? v.lat,
+            lng: eventData.lng ?? v.lng,
+            status: eventData.status ?? v.status,
+          };
+        }
+        return v;
+      });
+    });
+
     const savedSession = localStorage.getItem(SESSION_KEY) || localStorage.getItem('pwestoradar_session');
     if (savedSession) {
       try {
