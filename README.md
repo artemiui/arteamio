@@ -1,4 +1,4 @@
-# PwestoRadar
+# Pwesto
 
 Hyperlocal spatial intelligence and real-time vendor tracking platform for street food vendors, pop-up carts, and neighborhood buyers.
 
