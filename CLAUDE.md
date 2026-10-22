@@ -1,6 +1,6 @@
-# CLAUDE.md — PwestoRadar Project Reference & Architecture Guide
+# CLAUDE.md — Pwesto Project Reference & Architecture Guide
 
-> **Project:** PwestoRadar  
+> **Project:** Pwesto  
 > **Repository:** `arteamio`  
 > **Target Audience:** Filipino MSMEs, food cart operators, roving street vendors (*taho*, *balot*, *siomai*, etc.), and neighborhood consumers.
 
@@ -8,9 +8,9 @@
 
 ## 1. Executive Summary
 
-**PwestoRadar** is a hyperlocal spatial intelligence and real-time vendor discovery platform built for the Philippine informal and micro-retail street economy. Over 99% of registered businesses in the Philippines are MSMEs. Street-level entrepreneurs—from stationary pop-up kiosks to roving peddlers (*magtataho*, *balot*, *siomai* vendors)—routinely suffer lost revenue and early stall closures due to location mismatch, lack of foot-traffic data, and missed customer opportunities.
+**Pwesto** is a hyperlocal spatial intelligence and real-time vendor discovery platform built for the Philippine informal and micro-retail street economy. Over 99% of registered businesses in the Philippines are MSMEs. Street-level entrepreneurs—from stationary pop-up kiosks to roving peddlers (*magtataho*, *balot*, *siomai* vendors)—routinely suffer lost revenue and early stall closures due to location mismatch, lack of foot-traffic data, and missed customer opportunities.
 
-PwestoRadar bridges this gap through a consumer & vendor map experience inspired by **Sakay.ph**, **Angkas**, and **Google Maps**:
+Pwesto bridges this gap through a consumer & vendor map experience inspired by **Sakay.ph**, **Angkas**, and **Google Maps**:
 1. **Simple Sakay.ph / Angkas Style Landing:** Welcoming entry page with a primary **"Magsimula"** CTA prompting users: **"Bibili"** or **"Magbebenta?"**.
 2. **For Consumers ("Bibili"):** Immediate search bar defaulted to their current GPS location leading to a Google Maps style interface displaying tagged street foods (Taho, Siomai, Balut, etc.) with real-time ETA alerts (*"Ihanda ang barya at lagayan"*).
 3. **For Vendors ("Magbebenta"):** Quick product selection (*Taho, Siomai, Balut, Other*), simple photo verification of stall/kaldero, and a dedicated sidebar/drawer with live broadcast and stock toggles.
@@ -73,7 +73,7 @@ The UI is inspired by **Facebook's intuitive simplicity** and **Google Maps' ful
    * **Light Mode Logo:** [pwesto_default.svg](file:///C:/Users/Art/Documents/arteamio/public/assets/pwesto_default.svg) (`/assets/pwesto_default.svg`).
    * **Dark Mode Logo:** [pwesto_dark.svg](file:///C:/Users/Art/Documents/arteamio/public/assets/pwesto_dark.svg) (`/assets/pwesto_dark.svg`).
    * One-tap dark mode toggle (☀️ / 🌙) accessible from the landing page, map search bar, and vendor sidebar.
-   * Dynamically switches between CARTO Positron (clean, POI/establishment-free OSM tiles) and CARTO Dark Matter, modeled after the minimalist, uncluttered aesthetic of apps like Lyfsaver PH.
+   * Strictly uses official OpenStreetMap tiles (`https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png`) with custom CSS filter attenuation (`saturate(28%) contrast(86%) brightness(103%)`) to soften commercial POIs/establishments for maximum street food focus (matching the clean Lyfsaver PH aesthetic) without external third-party proxies. Dark mode utilizes high-contrast night-mode tile filtering.
 
 ### 3.2 Visual Legend (No City Dropdown Clutter)
 Instead of dividing by city dropdowns, the map displays all nearby vendors universally with an intuitive visual legend bar:
@@ -91,6 +91,12 @@ Instead of dividing by city dropdowns, the map displays all nearby vendors unive
 * **Full-viewport map:** Map fills 100% of the screen like Google Maps.
 * **Floating UI elements:** Search pill at top, floating visual legend, bottom sheet / drawer for vendor and pin details.
 * **Thumb-friendly touch targets:** Minimum 48×48px for all touch interactions.
+
+### 3.5 Strict Role Isolation & Deliberate Mode Swapping
+* **No Accidental Mode Swapping:** Toggling between **Bibili** and **Magbebenta** is guarded by an explicit confirmation dialog (`RoleSwitchModal.svelte`). Quick one-tap header pills are removed to prevent accidental switches on mobile.
+* **Buyer Isolation:** When in Buyer mode, the Vendor Dashboard (`Menu ng Tindero`, broadcast status, stock toggles, live audience metrics) is completely excluded from the UI.
+* **Vendor Onboarding Integrity:** Switching from Buyer to Vendor requires completing the full vendor onboarding flow—selecting products (*Taho, Siomai, Balut, Iba pa*) and submitting a stall/kaldero verification photo before broadcast activation.
+* **Guarded Routes:** The `/vendor` route strictly checks user role; buyers attempting direct URL navigation are safely routed to the consumer map.
 
 ---
 
@@ -112,7 +118,7 @@ Where:
 ## 5. System Architecture & Tech Stack
 
 * **Frontend:** Svelte 5 + Vite + Tailwind CSS (Mobile-first PWA, ultra-fast bundle).
-* **Mapping:** Leaflet with high-readability, establishment-free **OpenStreetMap-derived basemaps** (CARTO Positron for Light, CARTO Dark Matter for Dark; strips noisy commercial POIs/shops for maximum street-food pin focus, matching the clean style of Lyfsaver PH) adhering strictly to the [OSMF Attribution Guidelines](https://osmfoundation.org/wiki/Licence/Attribution_Guidelines) with clickable links to [OpenStreetMap Copyright](https://www.openstreetmap.org/copyright) and [CARTO](https://carto.com/attributions).
+* **Mapping:** Leaflet with official **OpenStreetMap** tile server (`https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png`). Strictly NO third-party Carto tile layers. Adheres 100% to the [OSMF Attribution Guidelines](https://osmfoundation.org/wiki/Licence/Attribution_Guidelines) with clickable links to [OpenStreetMap Copyright](https://www.openstreetmap.org/copyright). Establishment/POI visual noise is attenuated via tailored Leaflet tile-pane CSS filters to deliver the clean, minimalist look inspired by Lyfsaver PH.
 * **Storage:** `localStorage` for returning user session persistence (`pwestoradar_session`).
 * **Backend Target:** Python (FastAPI) + PostgreSQL / PostGIS + Redis for live GPS coordinate broadcasting.
 
@@ -126,7 +132,11 @@ Where:
 - [x] **"Magbebenta"** path: Product selection (*Taho, Siomai, Balut, Other*) + photo verification of kaldero/stall.
 - [x] Full-bleed Google Maps style main screen with product pins.
 - [x] Universal product legend (🥣, 🥡, 🥚, ⭐).
-- [x] Vendor slide-over sidebar / bottom drawer (Facebook UI simplicity).
+- [x] Vendor slide-over sidebar / bottom drawer (Facebook UI simplicity, strictly isolated to Vendor mode).
 - [x] Pure mobile responsiveness and thumb-friendly controls.
+- [x] Pure OpenStreetMap infrastructure (`tile.openstreetmap.org`) with zero Carto dependencies.
 - [x] OpenStreetMap Foundation attribution compliance with clickable copyright links.
-- [x] Simplified establishment-free map tiles (POI-free basemap like Lyfsaver PH for uncluttered street food visibility).
+- [x] Simplified establishment attenuation via CSS filters (Lyfsaver PH aesthetic).
+- [x] Strict role isolation: Buyer mode never sees vendor dashboard or vendor controls.
+- [x] Deliberate mode swapping: Guarded by confirmation modal (`RoleSwitchModal`) requiring onboarding verification when switching to vendor.
+- [x] Active Huff Gravity Model viability evaluation in Vendor Console (*"Saan Pepwesto?"*).

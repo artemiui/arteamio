@@ -1,4 +1,4 @@
-import type { BusinessArchetype, ProductType, TaggedVendor } from '../types';
+import type { BusinessArchetype, CompetitorNode, ProductType, TaggedVendor, TransitAnchor } from '../types';
 
 export interface MetroHubPreset {
   id: string;
@@ -168,5 +168,50 @@ export function generateTaggedVendorsAround(centerLat: number, centerLng: number
       etaMins: 6,
       status: 'live',
     },
+  ];
+}
+
+
+export function generateAnchorsAround(centerLat: number, centerLng: number): TransitAnchor[] {
+  return [
+    {
+      id: 'anchor-jeep-1',
+      name: 'España Jeepney / UV Express Loading Bay',
+      type: 'jeepney',
+      lat: centerLat + 0.0007,
+      lng: centerLng + 0.0005,
+      weight: 1.0,
+    },
+    {
+      id: 'anchor-trike-1',
+      name: 'Lacson Tricycle TODA Terminal',
+      type: 'tricycle',
+      lat: centerLat - 0.0008,
+      lng: centerLng - 0.0006,
+      weight: 0.85,
+    },
+    {
+      id: 'anchor-bridge-1',
+      name: 'Commuter Overpass / Footbridge',
+      type: 'school',
+      lat: centerLat + 0.0012,
+      lng: centerLng - 0.0004,
+      weight: 0.95,
+    },
+    {
+      id: 'anchor-train-1',
+      name: 'PNR / Transit Station Gate',
+      type: 'train',
+      lat: centerLat - 0.0015,
+      lng: centerLng + 0.0011,
+      weight: 1.2,
+    },
+  ];
+}
+
+export function generateCompetitorsAround(centerLat: number, centerLng: number): CompetitorNode[] {
+  return [
+    { id: 'comp-1', name: 'Karinderya Corner', lat: centerLat + 0.0005, lng: centerLng - 0.0003, category: 'food' },
+    { id: 'comp-2', name: 'Sari-Sari Store & Drinks', lat: centerLat - 0.0006, lng: centerLng + 0.0008, category: 'convenience' },
   ];
 }

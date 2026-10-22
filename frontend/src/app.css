@@ -48,7 +48,18 @@ body.dark .leaflet-container {
   background-color: #120C07 !important;
 }
 
-/* OpenStreetMap Foundation & CARTO Attribution Guidelines styling */
+/* OpenStreetMap Minimalist Basemap Styling (Lyfsaver-style establishment attenuation) */
+.leaflet-tile-pane {
+  filter: contrast(86%) brightness(103%) saturate(28%);
+  opacity: 0.94;
+}
+
+body.dark .leaflet-tile-pane {
+  filter: invert(96%) hue-rotate(180deg) brightness(85%) contrast(85%) saturate(20%);
+  opacity: 0.88;
+}
+
+/* OpenStreetMap Foundation Attribution Guidelines styling */
 .leaflet-control-attribution {
   background: rgba(255, 255, 255, 0.88) !important;
   color: #4A2E1B !important;

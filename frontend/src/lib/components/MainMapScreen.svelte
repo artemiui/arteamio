@@ -28,7 +28,7 @@
   let selectedVendor: TaggedVendor | null = null;
 
   // Vendor sidebar / drawer open state
-  let isSidebarOpen: boolean = session.role === 'vendor';
+  let isSidebarOpen: boolean = false;
   let vendorStatus: 'live' | 'stopped' | 'sold_out' = 'live';
   let waitingAudienceCount: number = 19;
 
@@ -70,17 +70,13 @@
       map.removeLayer(tileLayer);
     }
 
-    const tileUrl = isDarkMode
-      ? 'https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png'
-      : 'https://{s}.basemaps.cartocdn.com/rastertiles/light_all/{z}/{x}/{y}{r}.png';
-
-    tileLayer = L.tileLayer(tileUrl, {
+    tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
-      subdomains: 'abcd',
       attribution:
-        '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors, &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener noreferrer">CARTO</a>',
+        '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors',
     }).addTo(map);
   }
+
 
   $: filteredVendors = activeFilter
     ? vendors.filter((v) => v.productType === activeFilter)
@@ -218,17 +214,32 @@
         ? 'bg-[#271A10]/95 border-[#3D2717] text-[#FAF7F2]'
         : 'bg-white/95 border-[#EAE4D9] text-[#4A2E1B]'
     }`}>
-      <!-- Menu / Sidebar Toggle -->
-      <button
-        type="button"
-        on:click={() => (isSidebarOpen = !isSidebarOpen)}
-        class={`w-9 h-9 rounded-full transition flex items-center justify-center text-sm font-bold cursor-pointer shrink-0 ${
-          isDarkMode ? 'bg-[#352317] hover:bg-[#4A2E1B] text-[#F59E0B]' : 'bg-[#FAF7F2] hover:bg-[#EAE4D9] text-[#4A2E1B]'
-        }`}
-        title="Toggle Menu / Options"
-      >
-        ☰
-      </button>
+      <!-- Role Indicator / Vendor Drawer Toggle -->
+      {#if session.role === 'vendor'}
+        <button
+          type="button"
+          on:click={() => (isSidebarOpen = !isSidebarOpen)}
+          class={`w-9 h-9 rounded-full transition flex items-center justify-center text-sm font-bold cursor-pointer shrink-0 ${
+            isSidebarOpen
+              ? 'bg-[#4A2E1B] text-white'
+              : isDarkMode
+                ? 'bg-[#352317] hover:bg-[#4A2E1B] text-[#F59E0B]'
+                : 'bg-[#FEF3C7] hover:bg-[#FDE68A] text-[#D97706]'
+          }`}
+          title="Menu ng Tindero"
+        >
+          🛒
+        </button>
+      {:else}
+        <div
+          class={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${
+            isDarkMode ? 'bg-[#352317] text-[#FAF7F2]' : 'bg-[#FAF7F2] text-[#4A2E1B]'
+          }`}
+          title="Mamimili (Buyer Mode)"
+        >
+          🥣
+        </div>
+      {/if}
 
       <!-- Logo Display in Search Bar -->
       <div class="hidden sm:block shrink-0">
@@ -294,18 +305,16 @@
         <span>{isDarkMode ? '☀️' : '🌙'}</span>
       </button>
 
-      <!-- Switch Role Pill -->
-      <button
-        type="button"
-        on:click={onSwitchRole}
-        class={`px-3 py-1.5 rounded-full border text-[11px] font-bold transition cursor-pointer shrink-0 ${
-          isDarkMode
-            ? 'bg-[#352317] border-[#3D2717] text-[#FAF7F2] hover:bg-[#4A2E1B]'
-            : 'bg-[#FAF7F2] border-[#EAE4D9] text-[#4A2E1B] hover:bg-white'
+      <!-- Deliberate Role Badge (Non-clickable to prevent accidental switches) -->
+      <div
+        class={`px-3 py-1.5 rounded-full border text-[11px] font-black shrink-0 ${
+          session.role === 'vendor'
+            ? (isDarkMode ? 'bg-[#452B14] border-[#F59E0B]/40 text-[#F59E0B]' : 'bg-[#FEF3C7] border-[#D97706]/40 text-[#D97706]')
+            : (isDarkMode ? 'bg-[#271A10] border-[#3D2717] text-[#D6C7B2]' : 'bg-[#FAF7F2] border-[#EAE4D9] text-[#796658]')
         }`}
       >
-        {session.role === 'vendor' ? '🛒 Tindero' : '🥣 Bibili'} ▾
-      </button>
+        {session.role === 'vendor' ? '🛒 Tindero' : '🥣 Bibili'}
+      </div>
     </div>
 
     <!-- UNIVERSAL PRODUCT LEGEND BAR (HORIZONTAL FILTER PILLS) -->
@@ -430,8 +439,8 @@
     </div>
   {/if}
 
-  <!-- VENDOR SIDEBAR / BOTTOM DRAWER (FOR MAGTITINDA) -->
-  {#if isSidebarOpen}
+  <!-- VENDOR SIDEBAR / BOTTOM DRAWER (FOR MAGTITINDA ONLY) -->
+  {#if session.role === 'vendor' && isSidebarOpen}
     <div class={`absolute inset-y-0 left-0 w-full sm:w-96 backdrop-blur-md border-r shadow-2xl z-40 p-5 sm:p-6 flex flex-col justify-between overflow-y-auto animate-fade-in transition-colors ${
       isDarkMode
         ? 'bg-[#271A10]/98 border-[#3D2717] text-[#FAF7F2]'

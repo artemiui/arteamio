@@ -1,17 +1,34 @@
 <script lang="ts">
-  import type { Language, ProductType, UserSession } from '../lib/types';
+  import type { Language, ProductType, UserSession, BusinessArchetype } from '../lib/types';
   import Logo from '../lib/components/Logo.svelte';
+  import { BUSINESS_ARCHETYPES, generateAnchorsAround, generateCompetitorsAround } from '../lib/data/spots';
+  import { evaluateLocationViability } from '../lib/gravity';
 
   export let language: Language = 'tl';
   export let isDarkMode: boolean = false;
   export let session: UserSession;
   export let onUpdateProduct: (product: string) => void;
   export let onNavigate: (route: string) => void;
+  export let onRequestSwitchRole: (() => void) | undefined = undefined;
 
   let vendorStatus: 'live' | 'stopped' | 'sold_out' = 'live';
   let audienceCount: number = 22;
   let activeProduct: string = session.product || 'Taho';
   let uploadedPhoto: string | null = session.verifiedPhoto || null;
+
+  // Huff Gravity Model Viability Evaluation
+  let anchors = generateAnchorsAround(session.lat, session.lng);
+  let competitors = generateCompetitorsAround(session.lat, session.lng);
+  let selectedArchetype: BusinessArchetype =
+    BUSINESS_ARCHETYPES.find((a) => a.id === session.product?.toLowerCase()) || BUSINESS_ARCHETYPES[2]; // default Taho
+
+  $: viability = evaluateLocationViability(
+    session.lat,
+    session.lng,
+    selectedArchetype,
+    anchors,
+    competitors
+  );
 
   const PRODUCTS = [
     { name: 'Taho', icon: '🥣' },
@@ -174,6 +191,57 @@
       </div>
     </div>
 
+    <!-- Huff Gravity Model: Pwesto Viability Card ("Saan Pepwesto?") -->
+    <div class={`p-5 sm:p-6 rounded-[28px] border space-y-4 ${
+      isDarkMode ? 'bg-[#271A10] border-[#3D2717]' : 'bg-white border-[#EAE4D9]'
+    }`}>
+      <div class="flex items-center justify-between">
+        <div>
+          <span class="text-[11px] font-extrabold uppercase tracking-wider text-[#D97706]">
+            📐 {language === 'tl' ? 'Huff Gravity Model Foot-Traffic' : 'Huff Gravity Model Spatial Intel'}
+          </span>
+          <h2 class="text-base font-black">
+            {language === 'tl' ? 'Saan Pepwesto? (Viability Score)' : 'Stall Viability Score'}
+          </h2>
+        </div>
+        <div class={`px-3 py-1.5 rounded-full text-xs font-black border ${
+          viability.score >= 75
+            ? 'bg-green-500/10 text-green-500 border-green-500/20'
+            : viability.score >= 50
+              ? 'bg-amber-500/10 text-amber-500 border-amber-500/20'
+              : 'bg-red-500/10 text-red-500 border-red-500/20'
+        }`}>
+          {viability.score}/100 • {language === 'tl' ? viability.ratingTl : viability.ratingEn}
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+        <div class={`p-3 rounded-2xl border ${isDarkMode ? 'bg-[#1A120B] border-[#3D2717]' : 'bg-[#FAF7F2] border-[#EAE4D9]'}`}>
+          <span class="text-[10px] font-bold uppercase text-[#796658]">
+            {language === 'tl' ? 'Pinakamalapit na Sakayan' : 'Nearest Transit Anchor'}
+          </span>
+          <p class="font-extrabold mt-0.5 truncate">{viability.nearestAnchorName}</p>
+          <p class="text-[11px] text-[#D97706] font-bold">~{viability.nearestAnchorDistM}m layo</p>
+        </div>
+
+        <div class={`p-3 rounded-2xl border ${isDarkMode ? 'bg-[#1A120B] border-[#3D2717]' : 'bg-[#FAF7F2] border-[#EAE4D9]'}`}>
+          <span class="text-[10px] font-bold uppercase text-[#796658]">
+            {language === 'tl' ? 'Oras ng Dagsa ng Tao' : 'Peak Commuter Hours'}
+          </span>
+          <p class="font-extrabold mt-0.5 truncate">{language === 'tl' ? viability.peakHoursTl : viability.peakHoursEn}</p>
+          <p class="text-[11px] text-green-500 font-bold">🔥 High Traffic Window</p>
+        </div>
+
+        <div class={`p-3 rounded-2xl border ${isDarkMode ? 'bg-[#1A120B] border-[#3D2717]' : 'bg-[#FAF7F2] border-[#EAE4D9]'}`}>
+          <span class="text-[10px] font-bold uppercase text-[#796658]">
+            {language === 'tl' ? 'Kalapit na Kalaban' : 'Local Competition'}
+          </span>
+          <p class="font-extrabold mt-0.5">{viability.competitorCountWithin150m} stall sa 150m</p>
+          <p class="text-[11px] text-[#796658] font-medium">Mababang density friction</p>
+        </div>
+      </div>
+    </div>
+
     <!-- Photo Verification Card -->
     <div class={`p-5 rounded-[28px] border space-y-3 ${
       isDarkMode ? 'bg-[#271A10] border-[#3D2717]' : 'bg-white border-[#EAE4D9]'
@@ -200,6 +268,23 @@
         </label>
       {/if}
     </div>
+
+    <!-- Deliberate Role Switch Button (Requires Confirmation) -->
+    {#if onRequestSwitchRole}
+      <div class="pt-2 text-center">
+        <button
+          type="button"
+          on:click={onRequestSwitchRole}
+          class={`px-4 py-2.5 rounded-full border text-xs font-bold transition cursor-pointer ${
+            isDarkMode
+              ? 'bg-[#271A10] border-[#3D2717] text-[#D6C7B2] hover:bg-[#352317]'
+              : 'bg-white border-[#EAE4D9] text-[#796658] hover:bg-[#FAF7F2]'
+          }`}
+        >
+          🔄 {language === 'tl' ? 'Lumipat sa Mamimili (Buyer Mode)' : 'Switch to Buyer Mode'}
+        </button>
+      </div>
+    {/if}
 
     <!-- Primary Action: Open Map -->
     <button

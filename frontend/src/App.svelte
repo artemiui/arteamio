@@ -15,6 +15,7 @@
   import IntentModal from './lib/components/IntentModal.svelte';
   import BuyerSearchPrompt from './lib/components/BuyerSearchPrompt.svelte';
   import VendorOnboardingPrompt from './lib/components/VendorOnboardingPrompt.svelte';
+  import RoleSwitchModal from './lib/components/RoleSwitchModal.svelte';
 
   // Global App States
   let currentRoute: PageRoute = 'landing';
@@ -29,6 +30,7 @@
   // Intermediate Prompt States
   let showBuyerPrompt: boolean = false;
   let showVendorPrompt: boolean = false;
+  let showRoleSwitchModal: boolean = false;
 
   // Subscribe to hash router
   router.subscribe((route) => {
@@ -139,16 +141,29 @@
     router.navigate(targetRoute);
   }
 
-  function handleSwitchRole() {
+  function handleRequestSwitchRole() {
     if (!session) return;
-    const newRole: UserRole = session.role === 'buyer' ? 'vendor' : 'buyer';
-    session = {
-      ...session,
-      role: newRole,
-      product: newRole === 'vendor' ? (session.product || 'Taho') : undefined,
-    };
+    showRoleSwitchModal = true;
+  }
 
-    localStorage.setItem('pwestoradar_session', JSON.stringify(session));
+  function handleConfirmSwitchRole() {
+    if (!session) return;
+    showRoleSwitchModal = false;
+
+    if (session.role === 'buyer') {
+      // Switching from Buyer to Vendor: Open the full Vendor Onboarding Prompt
+      // so they choose their product (Taho, Siomai, Balut, Other) and upload stall photo!
+      showVendorPrompt = true;
+    } else {
+      // Switching from Vendor to Buyer: Pause vendor broadcast, switch to buyer, and navigate to map
+      const newSession: UserSession = {
+        ...session,
+        role: 'buyer',
+        product: undefined,
+        verifiedPhoto: undefined,
+      };
+      saveSessionAndNavigate(newSession, 'map');
+    }
   }
 
   function handleUpdateVendorProduct(product: string) {
@@ -196,7 +211,7 @@
         {language}
         {isDarkMode}
         onToggleDarkMode={handleToggleDarkMode}
-        onSwitchRole={handleSwitchRole}
+        onSwitchRole={handleRequestSwitchRole}
         onResetSession={handleResetSession}
         onNavigate={(r) => router.navigate(r as PageRoute)}
       />
@@ -212,21 +227,26 @@
 
   <!-- ROUTE 4: VENDOR DASHBOARD PAGE -->
   {:else if currentRoute === 'vendor'}
-    {#if session}
+    {#if session && session.role === 'vendor'}
       <VendorPage
         {session}
         {language}
         {isDarkMode}
         onUpdateProduct={handleUpdateVendorProduct}
+        onRequestSwitchRole={handleRequestSwitchRole}
         onNavigate={(r) => router.navigate(r as PageRoute)}
       />
     {:else}
-      <LandingPage
+      <!-- Buyers attempting to access /vendor are guarded and shown map -->
+      <MapPage
+        session={session || { role: 'buyer', locationName: 'Kasalukuyang Lokasyon', lat: 14.6091, lng: 120.9898, createdAt: new Date().toISOString() }}
+        vendors={activeVendors}
         {language}
         {isDarkMode}
         onToggleDarkMode={handleToggleDarkMode}
-        onStart={handleStartFromLanding}
-        onSelectRoleDirect={handleSelectRole}
+        onSwitchRole={handleRequestSwitchRole}
+        onResetSession={handleResetSession}
+        onNavigate={(r) => router.navigate(r as PageRoute)}
       />
     {/if}
 
@@ -240,7 +260,7 @@
       onToggleDarkMode={handleToggleDarkMode}
       onToggleLanguage={handleToggleLanguage}
       onToggleTextScale={handleToggleTextScale}
-      onSwitchRole={handleSwitchRole}
+      onSwitchRole={handleRequestSwitchRole}
       onResetSession={handleResetSession}
       onNavigate={(r) => router.navigate(r as PageRoute)}
     />
@@ -269,6 +289,15 @@
       {language}
       onConfirmVendor={handleConfirmVendor}
       onBack={() => (showVendorPrompt = false)}
+    />
+  {/if}
+  {#if showRoleSwitchModal && session}
+    <RoleSwitchModal
+      currentRole={session.role}
+      {language}
+      {isDarkMode}
+      onConfirmSwitch={handleConfirmSwitchRole}
+      onCancel={() => (showRoleSwitchModal = false)}
     />
   {/if}
 </main>
