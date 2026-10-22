@@ -16,6 +16,7 @@
   export let language: Language = 'tl';
   export let isDarkMode: boolean = false;
   export let onToggleDarkMode: (() => void) | undefined = undefined;
+  export let onToggleLanguage: (() => void) | undefined = undefined;
   export let onNavigateToLanding: (() => void) | undefined = undefined;
   export let onSwitchRole: () => void;
   export let onResetSession: () => void;
@@ -561,6 +562,40 @@
               <img src="/assets/mamimilimode.svg" class="h-full max-h-8 w-auto" alt="Buyer mode" />
             {/if}
         </div>
+
+        <!-- Language Toggle (Accessible at all times per spec §3.3) -->
+        {#if onToggleLanguage}
+          <button
+            type="button"
+            on:click={onToggleLanguage}
+            class={`w-10 h-10 rounded-xl flex items-center justify-center text-xs font-black transition cursor-pointer shadow-xs active:scale-95 ${
+              isDarkMode
+                ? 'bg-[#271A10] hover:bg-[#352317] text-[#FAF7F2]'
+                : 'bg-[#FAF7F2] hover:bg-[#EAE4D9] text-[#4A2E1B]'
+            }`}
+            title={language === 'tl' ? 'Switch to English' : 'Lumipat sa Tagalog'}
+            aria-label="Toggle Language"
+          >
+            <span>{language === 'tl' ? 'EN' : 'TL'}</span>
+          </button>
+        {/if}
+
+        <!-- Dark Mode Toggle (Accessible from Map per spec) -->
+        {#if onToggleDarkMode}
+          <button
+            type="button"
+            on:click={onToggleDarkMode}
+            class={`w-10 h-10 rounded-xl flex items-center justify-center text-sm transition cursor-pointer shadow-xs active:scale-95 ${
+              isDarkMode
+                ? 'bg-[#271A10] hover:bg-[#352317] text-[#F59E0B]'
+                : 'bg-[#FAF7F2] hover:bg-[#EAE4D9] text-[#4A2E1B]'
+            }`}
+            title={isDarkMode ? 'Lumipat sa Light Mode' : 'Lumipat sa Dark Mode'}
+            aria-label="Toggle Dark Mode"
+          >
+            <span>{isDarkMode ? '☀️' : '🌙'}</span>
+          </button>
+        {/if}
 
         <!-- Settings Button (Hosts Theme, Language, Audio, and Role Switch) -->
         {#if onNavigateToSettings}

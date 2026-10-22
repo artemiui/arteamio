@@ -144,20 +144,33 @@
   }
 
   function handleConfirmVendor(product: string, productType: ProductType, photoUrl?: string) {
-    const defaultLat = 14.6091; // España / Manila
-    const defaultLng = 120.9898;
+    const fallbackLat = 14.6091; // España / Manila default
+    const fallbackLng = 120.9898;
 
-    const newSession: UserSession = {
-      role: 'vendor',
-      locationName: 'España / Sampaloc, Manila',
-      lat: defaultLat,
-      lng: defaultLng,
-      product,
-      verifiedPhoto: photoUrl,
-      createdAt: new Date().toISOString(),
-    };
-    showVendorPrompt = false;
-    saveSessionAndNavigate(newSession, 'map');
+    function createVendorSession(lat: number, lng: number, locationName: string) {
+      const newSession: UserSession = {
+        role: 'vendor',
+        locationName,
+        lat,
+        lng,
+        product,
+        verifiedPhoto: photoUrl,
+        createdAt: new Date().toISOString(),
+      };
+      showVendorPrompt = false;
+      saveSessionAndNavigate(newSession, 'map');
+    }
+
+    // Try real GPS first, fall back to default Manila coords
+    if (typeof navigator !== 'undefined' && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => createVendorSession(pos.coords.latitude, pos.coords.longitude, 'Kasalukuyang Lokasyon (GPS)'),
+        () => createVendorSession(fallbackLat, fallbackLng, 'España / Sampaloc, Manila'),
+        { enableHighAccuracy: true, timeout: 5000, maximumAge: 30000 }
+      );
+    } else {
+      createVendorSession(fallbackLat, fallbackLng, 'España / Sampaloc, Manila');
+    }
   }
 
   function saveSessionAndNavigate(newSession: UserSession, targetRoute: PageRoute) {
@@ -220,6 +233,7 @@
       {language}
       {isDarkMode}
       onToggleDarkMode={handleToggleDarkMode}
+      onToggleLanguage={handleToggleLanguage}
       onStart={handleStartFromLanding}
       onSelectRoleDirect={handleSelectRole}
     />
@@ -241,6 +255,8 @@
         {language}
         {isDarkMode}
         onSwitchRole={handleRequestSwitchRole}
+        onToggleDarkMode={handleToggleDarkMode}
+        onToggleLanguage={handleToggleLanguage}
         onResetSession={handleResetSession}
         onNavigate={(r) => router.navigate(r as PageRoute)}
       />
@@ -273,6 +289,8 @@
         {language}
         {isDarkMode}
         onSwitchRole={handleRequestSwitchRole}
+        onToggleDarkMode={handleToggleDarkMode}
+        onToggleLanguage={handleToggleLanguage}
         onResetSession={handleResetSession}
         onNavigate={(r) => router.navigate(r as PageRoute)}
       />

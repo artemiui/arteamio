@@ -18,15 +18,40 @@
     { id: 'other', label: 'Other', icon: 'star' },
   ];
 
-  function handlePhotoUpload(e: Event) {
+  /** Compress an image file via canvas to stay under localStorage quota. */
+  function compressImage(file: File, maxWidth = 600, quality = 0.7): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        const scale = Math.min(1, maxWidth / img.width);
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width * scale;
+        canvas.height = img.height * scale;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) { reject(new Error('Canvas not supported')); return; }
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        URL.revokeObjectURL(url);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Image load failed')); };
+      img.src = url;
+    });
+  }
+
+  async function handlePhotoUpload(e: Event) {
     const input = e.target as HTMLInputElement;
     if (input.files && input.files[0]) {
-      const file = input.files[0];
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        uploadedPhotoPreview = event.target?.result as string;
-      };
-      reader.readAsDataURL(file);
+      try {
+        uploadedPhotoPreview = await compressImage(input.files[0]);
+      } catch {
+        // Fallback to raw base64 if compression fails
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          uploadedPhotoPreview = event.target?.result as string;
+        };
+        reader.readAsDataURL(input.files[0]);
+      }
     }
   }
 

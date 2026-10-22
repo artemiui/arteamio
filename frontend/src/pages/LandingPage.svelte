@@ -5,6 +5,7 @@
   export let language: Language = 'tl';
   export let isDarkMode: boolean = false;
   export let onToggleDarkMode: () => void;
+  export let onToggleLanguage: (() => void) | undefined = undefined;
   export let onStart: () => void;
   export let onSelectRoleDirect: (role: UserRole) => void;
 </script>
@@ -13,6 +14,7 @@
   {language}
   {isDarkMode}
   {onToggleDarkMode}
+  {onToggleLanguage}
   {onStart}
   {onSelectRoleDirect}
 />

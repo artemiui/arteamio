@@ -1,0 +1,16 @@
+{
+  "name": "Pwesto",
+  "short_name": "Pwesto",
+  "description": "Hyperlocal spatial intelligence and real-time vendor discovery platform for Philippine street food and roving peddlers.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FAF7F2",
+  "theme_color": "#4A2E1B",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
