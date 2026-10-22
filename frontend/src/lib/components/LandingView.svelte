@@ -6,6 +6,7 @@
   export let language: Language = 'tl';
   export let isDarkMode: boolean = false;
   export let onToggleDarkMode: () => void;
+  export let onToggleLanguage: (() => void) | undefined = undefined;
   export let onStart: () => void;
   export let onSelectRoleDirect: (role: UserRole) => void;
 
@@ -44,8 +45,23 @@
       <Logo {isDarkMode} className="h-9 sm:h-11 w-auto object-contain cursor-pointer" />
     </div>
 
-    <!-- Right Controls: Dark Mode Toggle -->
+    <!-- Right Controls: Language Toggle + Dark Mode Toggle -->
     <div class="flex items-center gap-2">
+      {#if onToggleLanguage}
+        <button
+          type="button"
+          on:click={onToggleLanguage}
+          class={`min-w-[44px] min-h-[44px] w-11 h-11 rounded-full border flex items-center justify-center text-xs font-black transition-all cursor-pointer shadow-xs active:scale-95 ${
+            isDarkMode
+              ? 'bg-[#271A10] border-[#3D2717] text-[#FAF7F2] hover:bg-[#352317]'
+              : 'bg-white border-[#EAE4D9] text-[#4A2E1B] hover:bg-[#FAF7F2]'
+          }`}
+          title={language === 'tl' ? 'Switch to English' : 'Lumipat sa Tagalog'}
+          aria-label="Toggle Language"
+        >
+          <span>{language === 'tl' ? 'EN' : 'TL'}</span>
+        </button>
+      {/if}
       <button
         type="button"
         on:click={onToggleDarkMode}

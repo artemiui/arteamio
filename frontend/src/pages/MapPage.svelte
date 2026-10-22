@@ -7,6 +7,7 @@
   export let language: Language = 'tl';
   export let isDarkMode: boolean = false;
   export let onToggleDarkMode: (() => void) | undefined = undefined;
+  export let onToggleLanguage: (() => void) | undefined = undefined;
   export let onSwitchRole: () => void;
   export let onResetSession: () => void;
   export let onNavigate: (route: string) => void;
@@ -18,6 +19,7 @@
   {language}
   {isDarkMode}
   {onToggleDarkMode}
+  {onToggleLanguage}
   {onSwitchRole}
   {onResetSession}
   onNavigateToLanding={() => onNavigate('landing')}
