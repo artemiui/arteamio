@@ -6,6 +6,7 @@
   export let language: Language = 'tl';
   export let isDarkMode: boolean = false;
   export let session: UserSession | null = null;
+  export let isTargeted: boolean = false;
   export let onClose: () => void;
   export let onTargetLocation: ((lat: number, lng: number) => void) | undefined = undefined;
 
@@ -66,15 +67,19 @@
         type="button"
         on:click={() => onTargetLocation && onTargetLocation(hotspot.lat, hotspot.lng)}
         class={`w-full py-2.5 px-4 rounded-xl font-black text-xs transition cursor-pointer flex items-center justify-center gap-1.5 shadow-2xs active:scale-98 ${
-          isDarkMode
-            ? 'bg-[#F59E0B] text-[#1A120B] hover:bg-[#D97706]'
-            : 'bg-[#4A2E1B] text-white hover:bg-[#361F11]'
+          isTargeted
+            ? (isDarkMode ? 'bg-[#F59E0B]/20 text-[#F59E0B] border-2 border-[#F59E0B]' : 'bg-[#D97706]/15 text-[#D97706] border-2 border-[#D97706]')
+            : isDarkMode
+              ? 'bg-[#F59E0B] text-[#1A120B] hover:bg-[#D97706]'
+              : 'bg-[#4A2E1B] text-white hover:bg-[#361F11]'
         }`}
       >
         <span>
-          {session?.role === 'vendor'
-            ? (language === 'tl' ? 'Itutok ang Ruta Dito' : 'Target This Hotspot')
-            : (language === 'tl' ? 'I-sentro sa Mapa' : 'Focus on Map')}
+          {isTargeted
+            ? (language === 'tl' ? '✓ Nakaturo ang Ruta (Pindutin para Alisin)' : '✓ Route Active (Tap to Clear)')
+            : session?.role === 'vendor'
+              ? (language === 'tl' ? 'Ituro ang Ruta Dito' : 'Show Route to Hotspot')
+              : (language === 'tl' ? 'I-sentro sa Mapa' : 'Focus on Map')}
         </span>
       </button>
     </div>
