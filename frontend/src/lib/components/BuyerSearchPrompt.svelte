@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import type { Language } from '../types';
   import { searchOSM, type OSMSearchResult } from '../services/osmGeocoding';
+  import Icon from './Icon.svelte';
 
   export let language: Language = 'tl';
   export let onConfirmLocation: (locationName: string, lat: number, lng: number) => void;
@@ -114,7 +115,7 @@
   <div class="bg-white w-full max-w-lg rounded-[36px] border border-[#EAE4D9] shadow-2xl p-6 sm:p-8 space-y-6 text-[#4A2E1B] max-h-[92vh] overflow-y-auto">
     <!-- Header -->
     <div class="text-center space-y-1">
-      <span class="text-3xl">🥣</span>
+      <div class="flex justify-center text-[#D97706]"><Icon name="bowl" size={36} /></div>
       <h2 class="text-2xl sm:text-3xl font-black text-[#4A2E1B] tracking-tight">
         {language === 'tl' ? 'Saan Ka Bibili?' : 'Where are you buying?'}
       </h2>
@@ -146,14 +147,14 @@
           title={language === 'tl' ? 'Gamitin ang GPS' : 'Use GPS'}
           class="absolute inset-y-0 right-0 pr-4 flex items-center text-lg text-[#D97706] hover:scale-110 transition cursor-pointer"
         >
-          {isDetectingGPS ? '⏳' : isSearchingOSM ? '🔄' : '🎯'}
+          {#if isDetectingGPS || isSearchingOSM}<span class="animate-spin"><Icon name="refresh" size={18} /></span>{:else}<Icon name="location-center" size={20} />{/if}
         </button>
       </div>
 
       <!-- Real-time OSM Results Dropdown -->
       {#if isSearchingOSM}
         <div class="p-2 text-center text-xs font-bold text-[#D97706] flex items-center justify-center gap-2">
-          <span class="animate-spin">🔄</span>
+          <span class="animate-spin"><Icon name="refresh" size={14} /></span>
           <span>Naghahanap sa OpenStreetMap...</span>
         </div>
       {:else if osmResults.length > 0}
@@ -167,7 +168,7 @@
               on:click={() => selectOSM(res)}
               class="w-full p-2 rounded-xl text-left hover:bg-white flex items-start gap-2 transition cursor-pointer"
             >
-              <span class="text-sm mt-0.5">📍</span>
+              <span class="mt-0.5"><Icon name="map-pin" size={16} /></span>
               <div class="truncate flex-1">
                 <p class="text-xs font-black truncate">{res.name}</p>
                 <p class="text-[10px] text-[#796658] truncate">{res.subtitle}</p>

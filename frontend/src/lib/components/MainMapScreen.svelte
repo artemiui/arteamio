@@ -1457,7 +1457,7 @@
       title={language === 'tl' ? 'I-sentro sa Aking Lokasyon' : 'Center to My Location'}
       aria-label="Center Map"
     >
-      🎯
+      <Icon name="location-center" size={18} />
     </button>
   </div>
 

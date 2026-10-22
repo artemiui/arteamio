@@ -6,18 +6,17 @@ export interface MetroHubPreset {
   region: string;
   lat: number;
   lng: number;
-  icon: string;
 }
 
 export const PHILIPPINE_METRO_HUBS: MetroHubPreset[] = [
-  { id: 'manila-espana', name: 'España / Sampaloc', region: 'Manila', lat: 14.6091, lng: 120.9898, icon: 'map-pin' },
-  { id: 'qc-cubao', name: 'Araneta City / Cubao', region: 'Quezon City', lat: 14.6200, lng: 121.0530, icon: 'bus' },
-  { id: 'makati-ayala', name: 'Ayala / Poblacion', region: 'Makati', lat: 14.5547, lng: 121.0244, icon: 'map-pin' },
-  { id: 'taguig-bgc', name: 'Bonifacio Global City', region: 'Taguig', lat: 14.5490, lng: 121.0495, icon: 'map-pin' },
-  { id: 'pasig-ortigas', name: 'Ortigas Center', region: 'Pasig / Mandaluyong', lat: 14.5866, lng: 121.0610, icon: 'bus' },
-  { id: 'caloocan-monumento', name: 'Monumento Circle', region: 'Caloocan', lat: 14.6575, lng: 120.9836, icon: 'bus' },
-  { id: 'cebu-itpark', name: 'Cebu IT Park / Colon', region: 'Cebu City', lat: 10.3283, lng: 123.9061, icon: 'map-pin' },
-  { id: 'davao-roxas', name: 'Roxas Night Market', region: 'Davao City', lat: 7.0673, lng: 125.6083, icon: 'flame' },
+  { id: 'manila-espana', name: 'España / Sampaloc', region: 'Manila', lat: 14.6091, lng: 120.9898 },
+  { id: 'qc-cubao', name: 'Araneta City / Cubao', region: 'Quezon City', lat: 14.6200, lng: 121.0530 },
+  { id: 'makati-ayala', name: 'Ayala / Poblacion', region: 'Makati', lat: 14.5547, lng: 121.0244 },
+  { id: 'taguig-bgc', name: 'Bonifacio Global City', region: 'Taguig', lat: 14.5490, lng: 121.0495 },
+  { id: 'pasig-ortigas', name: 'Ortigas Center', region: 'Pasig / Mandaluyong', lat: 14.5866, lng: 121.0610 },
+  { id: 'caloocan-monumento', name: 'Monumento Circle', region: 'Caloocan', lat: 14.6575, lng: 120.9836 },
+  { id: 'cebu-itpark', name: 'Cebu IT Park / Colon', region: 'Cebu City', lat: 10.3283, lng: 123.9061 },
+  { id: 'davao-roxas', name: 'Roxas Night Market', region: 'Davao City', lat: 7.0673, lng: 125.6083 },
 ];
 
 export const BUSINESS_ARCHETYPES: BusinessArchetype[] = [

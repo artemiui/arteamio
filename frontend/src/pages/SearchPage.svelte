@@ -3,6 +3,7 @@
   import { PHILIPPINE_METRO_HUBS } from '../lib/data/spots';
   import { searchOSM, type OSMSearchResult } from '../lib/services/osmGeocoding';
   import Logo from '../lib/components/Logo.svelte';
+  import Icon from '../lib/components/Icon.svelte';
 
   export let language: Language = 'tl';
   export let isDarkMode: boolean = false;
@@ -147,9 +148,11 @@
     <div class={`p-5 rounded-[28px] border space-y-3 ${
       isDarkMode ? 'bg-[#271A10] border-[#3D2717]' : 'bg-white border-[#EAE4D9]'
     }`}>
-      <div class="relative">
-        <span class="absolute inset-y-0 left-0 pl-4 flex items-center text-lg pointer-events-none">
-          🔍
+      <div class="relative flex items-center">
+        <span class={`absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none ${
+          isDarkMode ? 'text-[#D6C7B2]' : 'text-[#796658]'
+        }`}>
+          <Icon name="search" size={20} />
         </span>
         <input
           type="text"
@@ -157,30 +160,27 @@
           on:input={handleInput}
           on:keydown={handleKeyDown}
           placeholder={language === 'tl' ? 'I-type ang lugar (hal. UP Diliman)...' : 'Search place (e.g. UP Diliman)...'}
-          class={`w-full pl-12 pr-12 py-4 rounded-2xl border-2 text-sm sm:text-base font-bold outline-none transition-colors ${
+          class={`w-full pl-12 pr-10 py-4 rounded-2xl border-2 text-sm sm:text-base font-bold outline-none transition-colors ${
             isDarkMode
               ? 'bg-[#1A120B] border-[#3D2717] text-white focus:border-[#F59E0B]'
               : 'bg-[#FAF7F2] border-[#EAE4D9] text-[#4A2E1B] focus:border-[#4A2E1B]'
           }`}
         />
-        <button
-          type="button"
-          on:click={detectGPS}
-          class="absolute inset-y-0 right-0 pr-4 flex items-center text-lg text-[#D97706] cursor-pointer"
-          title="Auto-detect GPS"
-        >
-          {isDetectingGPS ? '⏳' : isSearchingOSM ? '🔄' : '🎯'}
-        </button>
+        {#if isSearchingOSM}
+          <span class="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-[#D97706] animate-spin">
+            <Icon name="refresh" size={18} />
+          </span>
+        {/if}
       </div>
 
       <!-- Real-time OSM Results Dropdown List -->
       {#if isSearchingOSM}
         <div class="p-3 text-center text-xs font-bold text-[#D97706] flex items-center justify-center gap-2">
-          <span class="animate-spin">🔄</span>
+          <span class="animate-spin"><Icon name="refresh" size={14} /></span>
           <span>{language === 'tl' ? 'Naghahanap sa OpenStreetMap...' : 'Searching OpenStreetMap...'}</span>
         </div>
       {:else if osmResults.length > 0}
-        <div class={`rounded-2xl border p-2 space-y-1.5 shadow-sm ${
+        <div class={`rounded-2xl border p-2 space-y-1.5 shadow-sm max-h-60 overflow-y-auto ${
           isDarkMode ? 'bg-[#1A120B] border-[#3D2717]' : 'bg-[#FAF7F2] border-[#EAE4D9]'
         }`}>
           <div class="px-2 pt-1 text-[10px] font-black uppercase text-[#D97706] tracking-wider">
@@ -194,32 +194,54 @@
                 isDarkMode ? 'hover:bg-[#271A10] text-[#FAF7F2]' : 'hover:bg-white text-[#4A2E1B]'
               }`}
             >
-              <span class="text-base mt-0.5">📍</span>
+              <span class="mt-0.5"><Icon name="map-pin" size={16} /></span>
               <div class="truncate flex-1">
                 <p class="text-xs font-black truncate">{res.name}</p>
                 <p class={`text-[11px] truncate ${isDarkMode ? 'text-[#D6C7B2]' : 'text-[#796658]'}`}>{res.subtitle}</p>
               </div>
-              <span class="text-[11px] font-bold text-[#D97706] self-center shrink-0">Piliin →</span>
+              <span class="text-[11px] font-bold text-[#D97706] self-center shrink-0">
+                {language === 'tl' ? 'Piliin →' : 'Select →'}
+              </span>
             </button>
           {/each}
         </div>
       {/if}
 
-      <button
-        type="button"
-        on:click={detectGPS}
-        class={`w-full py-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 cursor-pointer ${
-          isDarkMode
-            ? 'bg-[#352317] border-[#3D2717] text-[#F59E0B]'
-            : 'bg-[#FEF3C7] border-[#D97706]/30 text-[#4A2E1B]'
-        }`}
-      >
-        <span>🎯</span>
-        <span>{language === 'tl' ? 'Gamitin ang Aking Kasalukuyang GPS' : 'Use Current GPS'}</span>
-      </button>
+      <!-- Under search: Finalize button with a small rounded square button next to it for current location -->
+      <div class="flex items-center gap-2.5 pt-1">
+        <button
+          type="button"
+          on:click={handleConfirm}
+          class={`flex-1 py-3.5 px-4 rounded-2xl font-black text-sm sm:text-base shadow-md transition flex items-center justify-center gap-2 cursor-pointer min-h-[50px] active:scale-98 ${
+            isDarkMode
+              ? 'bg-[#F59E0B] text-[#1A120B] hover:bg-[#D97706]'
+              : 'bg-[#4A2E1B] text-white hover:bg-[#361F11]'
+          }`}
+        >
+          <span>{language === 'tl' ? 'Itakda ang Lokasyon at Pumunta sa Mapa' : 'Set Location & View Map'}</span>
+          <span>→</span>
+        </button>
+
+        <button
+          type="button"
+          on:click={detectGPS}
+          disabled={isDetectingGPS}
+          class={`w-[50px] h-[50px] rounded-2xl border-2 flex items-center justify-center shrink-0 transition shadow-sm cursor-pointer active:scale-95 ${
+            isDetectingGPS ? 'animate-pulse' : ''
+          } ${
+            isDarkMode
+              ? 'bg-[#352317] border-[#3D2717] text-[#F59E0B] hover:bg-[#452B14]'
+              : 'bg-[#FEF3C7] border-[#D97706]/40 text-[#4A2E1B] hover:bg-[#FDE68A]'
+          }`}
+          title={language === 'tl' ? 'Gamitin ang Aking Kasalukuyang GPS' : 'Use Current Location'}
+          aria-label={language === 'tl' ? 'Kasalukuyang Lokasyon' : 'Current Location'}
+        >
+          <Icon name="location-center" size={22} />
+        </button>
+      </div>
     </div>
 
-    <!-- Major Hubs List -->
+    <!-- Major Hubs List (without icons) -->
     <div class={`p-5 rounded-[28px] border space-y-3 ${
       isDarkMode ? 'bg-[#271A10] border-[#3D2717]' : 'bg-white border-[#EAE4D9]'
     }`}>
@@ -231,34 +253,17 @@
           <button
             type="button"
             on:click={() => handleSelectHub(hub)}
-            class={`p-3 rounded-2xl border text-left flex items-center gap-3 transition cursor-pointer ${
+            class={`p-3.5 rounded-2xl border text-left flex flex-col justify-center transition cursor-pointer ${
               searchQuery.includes(hub.name)
                 ? (isDarkMode ? 'bg-[#F59E0B] text-[#1A120B] border-[#F59E0B]' : 'bg-[#4A2E1B] text-white border-[#4A2E1B]')
                 : (isDarkMode ? 'bg-[#352317] text-white border-[#3D2717]' : 'bg-[#FAF7F2] text-[#4A2E1B] border-[#EAE4D9]')
             }`}
           >
-            <span class="text-xl">{hub.icon}</span>
-            <div class="truncate">
-              <p class="text-xs font-extrabold truncate">{hub.name}</p>
-              <p class="text-[10px] opacity-75">{hub.region}</p>
-            </div>
+            <p class="text-xs font-extrabold truncate">{hub.name}</p>
+            <p class="text-[10px] opacity-75">{hub.region}</p>
           </button>
         {/each}
       </div>
     </div>
-
-    <!-- Confirm Button -->
-    <button
-      type="button"
-      on:click={handleConfirm}
-      class={`w-full py-4 rounded-2xl font-black text-sm sm:text-base shadow-md transition flex items-center justify-center gap-2 cursor-pointer min-h-[52px] active:scale-98 ${
-        isDarkMode
-          ? 'bg-[#F59E0B] text-[#1A120B] hover:bg-[#D97706]'
-          : 'bg-[#4A2E1B] text-white hover:bg-[#361F11]'
-      }`}
-    >
-      <span>{language === 'tl' ? 'Itakda ang Lokasyon at Pumunta sa Mapa' : 'Set Location & View Map'}</span>
-      <span>→</span>
-    </button>
   </div>
 </div>

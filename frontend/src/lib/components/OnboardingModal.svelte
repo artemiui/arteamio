@@ -277,7 +277,6 @@
                     : 'bg-white text-[#4A2E1B] border-[#EAE4D9] hover:bg-[#FAF7F2]'
                 }`}
               >
-                <span>{hub.icon}</span>
                 <span>{hub.name}</span>
               </button>
             {/each}
