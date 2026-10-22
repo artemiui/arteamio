@@ -1,4 +1,24 @@
-import type { BusinessArchetype, CompetitorNode, LiveVendor, TransitAnchor } from '../types';
+import type { BusinessArchetype, ProductType, TaggedVendor } from '../types';
+
+export interface MetroHubPreset {
+  id: string;
+  name: string;
+  region: string;
+  lat: number;
+  lng: number;
+  icon: string;
+}
+
+export const PHILIPPINE_METRO_HUBS: MetroHubPreset[] = [
+  { id: 'manila-espana', name: 'España / Sampaloc', region: 'Manila', lat: 14.6091, lng: 120.9898, icon: '🏙️' },
+  { id: 'qc-cubao', name: 'Araneta City / Cubao', region: 'Quezon City', lat: 14.6200, lng: 121.0530, icon: '🚆' },
+  { id: 'makati-ayala', name: 'Ayala / Poblacion', region: 'Makati', lat: 14.5547, lng: 121.0244, icon: '🏢' },
+  { id: 'taguig-bgc', name: 'Bonifacio Global City', region: 'Taguig', lat: 14.5490, lng: 121.0495, icon: '🌆' },
+  { id: 'pasig-ortigas', name: 'Ortigas Center', region: 'Pasig / Mandaluyong', lat: 14.5866, lng: 121.0610, icon: '🚊' },
+  { id: 'caloocan-monumento', name: 'Monumento Circle', region: 'Caloocan', lat: 14.6575, lng: 120.9836, icon: '🚐' },
+  { id: 'cebu-itpark', name: 'Cebu IT Park / Colon', region: 'Cebu City', lat: 10.3283, lng: 123.9061, icon: '🌴' },
+  { id: 'davao-roxas', name: 'Roxas Night Market', region: 'Davao City', lat: 7.0673, lng: 125.6083, icon: '🏮' },
+];
 
 export const BUSINESS_ARCHETYPES: BusinessArchetype[] = [
   {
@@ -51,95 +71,102 @@ export const BUSINESS_ARCHETYPES: BusinessArchetype[] = [
   },
 ];
 
-// Realistic anchors around UST / España / Sampaloc
-export const SAMPLE_TRANSIT_ANCHORS: TransitAnchor[] = [
-  {
-    id: 'anchor-1',
-    name: 'España Blvd Jeepney Loading Bay',
-    type: 'jeepney',
-    lat: 14.6067,
-    lng: 120.9892,
-    weight: 1.0,
-  },
-  {
-    id: 'anchor-2',
-    name: 'Dapitan St Tricycle Terminal',
-    type: 'tricycle',
-    lat: 14.6115,
-    lng: 120.9885,
-    weight: 0.8,
-  },
-  {
-    id: 'anchor-3',
-    name: 'P. Noval Dormitory Walkway',
-    type: 'school',
-    lat: 14.6075,
-    lng: 120.9855,
-    weight: 0.9,
-  },
-  {
-    id: 'anchor-4',
-    name: 'Lacson Ave UV Express / Jeep Stop',
-    type: 'jeepney',
-    lat: 14.6120,
-    lng: 120.9930,
-    weight: 0.95,
-  },
-  {
-    id: 'anchor-5',
-    name: 'España PNR Commuter Footbridge',
-    type: 'train',
-    lat: 14.6080,
-    lng: 120.9945,
-    weight: 1.0,
-  },
+export const PRODUCT_LEGEND: { type: ProductType; labelTl: string; labelEn: string; icon: string; color: string }[] = [
+  { type: 'taho', labelTl: 'Taho', labelEn: 'Taho', icon: '🥣', color: '#D97706' },
+  { type: 'siomai', labelTl: 'Siomai', labelEn: 'Siomai', icon: '🥡', color: '#B45309' },
+  { type: 'balot', labelTl: 'Balot', labelEn: 'Balut', icon: '🥚', color: '#78350F' },
+  { type: 'other', labelTl: 'Iba Pa', labelEn: 'Others', icon: '⭐', color: '#4A2E1B' },
 ];
 
-export const SAMPLE_COMPETITORS: CompetitorNode[] = [
-  { id: 'c-1', name: 'Fast Food Chain', lat: 14.6070, lng: 120.9898, category: 'fast_food' },
-  { id: 'c-2', name: 'Kiosk Corner', lat: 14.6110, lng: 120.9880, category: 'cart' },
-  { id: 'c-3', name: 'Convenience Store', lat: 14.6082, lng: 120.9860, category: 'convenience' },
-  { id: 'c-4', name: 'Milk Tea & Coffee Stand', lat: 14.6095, lng: 120.9915, category: 'cafe' },
-];
-
-export const INITIAL_LIVE_VENDORS: LiveVendor[] = [
-  {
-    id: 'v-1',
-    name: 'Kuya Boyet',
-    item: 'Taho (Mainit & Sweet)',
-    itemTl: 'Mainit na Taho',
-    icon: '🥣',
-    lat: 14.6090,
-    lng: 120.9875,
-    status: 'moving',
-    distanceM: 140,
-    etaMins: 2,
-    lastUpdated: '1 min ago',
-  },
-  {
-    id: 'v-2',
-    name: 'Mang Jun',
-    item: 'Balot, Penoy, Chicharon',
-    itemTl: 'Balot at Penoy',
-    icon: '🥚',
-    lat: 14.6105,
-    lng: 120.9910,
-    status: 'active',
-    distanceM: 320,
-    etaMins: 5,
-    lastUpdated: 'Just now',
-  },
-  {
-    id: 'v-3',
-    name: 'Ate Lolit',
-    item: 'Banana Cue & Turon',
-    itemTl: 'Merienda (Turon & Banana Cue)',
-    icon: '🍌',
-    lat: 14.6062,
-    lng: 120.9868,
-    status: 'moving',
-    distanceM: 450,
-    etaMins: 7,
-    lastUpdated: '3 mins ago',
-  },
-];
+export function generateTaggedVendorsAround(centerLat: number, centerLng: number): TaggedVendor[] {
+  return [
+    {
+      id: 'v-taho-1',
+      name: 'Kuya Boyet',
+      productType: 'taho',
+      productName: 'Mainit na Taho',
+      productNameTl: 'Mainit na Taho',
+      icon: '🥣',
+      price: '₱30 / baso',
+      lat: centerLat + 0.0009,
+      lng: centerLng - 0.0008,
+      distanceM: 130,
+      etaMins: 2,
+      status: 'live',
+      verifiedPhoto: 'https://images.unsplash.com/photo-1541696432-82c6da8ce7bf?auto=format&fit=crop&w=400&q=80',
+    },
+    {
+      id: 'v-siomai-1',
+      name: 'Ate Tess Siomai Rice',
+      productType: 'siomai',
+      productName: 'Pork & Beef Siomai Rice',
+      productNameTl: 'Siomai Rice + Gulaman',
+      icon: '🥡',
+      price: '₱45 / order',
+      lat: centerLat - 0.0011,
+      lng: centerLng + 0.0012,
+      distanceM: 190,
+      etaMins: 3,
+      status: 'live',
+      verifiedPhoto: 'https://images.unsplash.com/photo-1563245372-f21724e3856d?auto=format&fit=crop&w=400&q=80',
+    },
+    {
+      id: 'v-balut-1',
+      name: 'Mang Jun Balot',
+      productType: 'balut',
+      productName: 'Balut, Penoy, Chicharon',
+      productNameTl: 'Mainit na Balut 16 Days',
+      icon: '🥚',
+      price: '₱25 / piraso',
+      lat: centerLat + 0.0016,
+      lng: centerLng + 0.0014,
+      distanceM: 260,
+      etaMins: 4,
+      status: 'live',
+      verifiedPhoto: 'https://images.unsplash.com/photo-1506084868230-bb9d95c24759?auto=format&fit=crop&w=400&q=80',
+    },
+    {
+      id: 'v-other-1',
+      name: 'Mang Roger Kape & Merienda',
+      productType: 'other',
+      productName: 'Malamig na Kape & Turon',
+      productNameTl: 'Barako Kape & Turon',
+      icon: '⭐',
+      price: '₱35 / cup',
+      lat: centerLat - 0.0017,
+      lng: centerLng - 0.0015,
+      distanceM: 320,
+      etaMins: 5,
+      status: 'stopped',
+      verifiedPhoto: 'https://images.unsplash.com/photo-1517256064527-09c73fc73e38?auto=format&fit=crop&w=400&q=80',
+    },
+    {
+      id: 'v-taho-2',
+      name: 'Kuya Manny',
+      productType: 'taho',
+      productName: 'Taho Extra Arnibal',
+      productNameTl: 'Taho (Extra Arnibal & Sago)',
+      icon: '🥣',
+      price: '₱35 / baso',
+      lat: centerLat - 0.0022,
+      lng: centerLng + 0.0004,
+      distanceM: 290,
+      etaMins: 4,
+      status: 'live',
+    },
+    {
+      id: 'v-siomai-2',
+      name: 'Master Siomai Cart',
+      productType: 'siomai',
+      productName: 'Japanese & Sharksfin Siomai',
+      productNameTl: 'Fried & Steamed Siomai',
+      icon: '🥡',
+      price: '₱50 / 4pcs',
+      lat: centerLat + 0.0024,
+      lng: centerLng - 0.0019,
+      distanceM: 380,
+      etaMins: 6,
+      status: 'live',
+    },
+  ];
+}

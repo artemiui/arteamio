@@ -1,136 +1,274 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import type { BusinessArchetype, Language, LiveVendor, ViewMode } from './lib/types';
-  import { BUSINESS_ARCHETYPES, INITIAL_LIVE_VENDORS, SAMPLE_COMPETITORS, SAMPLE_TRANSIT_ANCHORS } from './lib/data/spots';
-  import { evaluateLocationViability } from './lib/gravity';
+  import type { Language, ProductType, TaggedVendor, UserRole, UserSession } from './lib/types';
+  import { generateTaggedVendorsAround } from './lib/data/spots';
+  import { router, type PageRoute } from './lib/router';
 
-  import Navbar from './lib/components/Navbar.svelte';
-  import MapView from './lib/components/MapView.svelte';
-  import ViabilityCard from './lib/components/ViabilityCard.svelte';
-  import BuyerRadar from './lib/components/BuyerRadar.svelte';
-  import VendorBroadcast from './lib/components/VendorBroadcast.svelte';
+  // Pages
+  import LandingPage from './pages/LandingPage.svelte';
+  import MapPage from './pages/MapPage.svelte';
+  import VendorPage from './pages/VendorPage.svelte';
+  import SettingsPage from './pages/SettingsPage.svelte';
+  import SearchPage from './pages/SearchPage.svelte';
 
-  // Application State
-  let currentView: ViewMode = 'pwesto';
+  // Modals & Prompts
+  import IntentModal from './lib/components/IntentModal.svelte';
+  import BuyerSearchPrompt from './lib/components/BuyerSearchPrompt.svelte';
+  import VendorOnboardingPrompt from './lib/components/VendorOnboardingPrompt.svelte';
+
+  // Global App States
+  let currentRoute: PageRoute = 'landing';
   let language: Language = 'tl';
+  let isDarkMode: boolean = false;
   let largeText: boolean = false;
 
-  // Selected Coordinates (Default: UST Dapitan / Sampaloc area)
-  let selectedLat: number = 14.6105;
-  let selectedLng: number = 120.9890;
+  // Active User Session & Tagged Vendors
+  let session: UserSession | null = null;
+  let activeVendors: TaggedVendor[] = [];
 
-  let archetypes = BUSINESS_ARCHETYPES;
-  let selectedArchetype: BusinessArchetype = BUSINESS_ARCHETYPES[0];
-  let liveVendors: LiveVendor[] = INITIAL_LIVE_VENDORS;
+  // Intermediate Prompt States
+  let showBuyerPrompt: boolean = false;
+  let showVendorPrompt: boolean = false;
 
-  // Evaluate viability reactively
-  $: viabilityResult = evaluateLocationViability(
-    selectedLat,
-    selectedLng,
-    selectedArchetype,
-    SAMPLE_TRANSIT_ANCHORS,
-    SAMPLE_COMPETITORS
-  );
+  // Subscribe to hash router
+  router.subscribe((route) => {
+    currentRoute = route;
+  });
 
-  function handleSelectLocation(lat: number, lng: number) {
-    selectedLat = Number(lat.toFixed(5));
-    selectedLng = Number(lng.toFixed(5));
+  onMount(() => {
+    // 1. Theme initialization
+    const savedTheme = localStorage.getItem('pwestoradar_theme');
+    if (savedTheme === 'dark' || (!savedTheme && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      setDarkMode(true);
+    } else {
+      setDarkMode(false);
+    }
+
+    // 2. Load Session from LocalStorage
+    const savedSession = localStorage.getItem('pwestoradar_session');
+    if (savedSession) {
+      try {
+        const parsed: UserSession = JSON.parse(savedSession);
+        session = parsed;
+        activeVendors = generateTaggedVendorsAround(parsed.lat, parsed.lng);
+
+        // If on root with saved session, go straight to map
+        if (window.location.hash === '' || window.location.hash === '#/' || window.location.hash === '#/landing') {
+          router.navigate('map');
+        }
+      } catch (e) {
+        session = null;
+      }
+    }
+  });
+
+  function setDarkMode(enabled: boolean) {
+    isDarkMode = enabled;
+    if (typeof document !== 'undefined') {
+      document.documentElement.classList.toggle('dark', enabled);
+      document.body.classList.toggle('dark', enabled);
+    }
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('pwestoradar_theme', enabled ? 'dark' : 'light');
+    }
   }
 
-  function handleSelectVendor(vendor: LiveVendor) {
-    selectedLat = vendor.lat;
-    selectedLng = vendor.lng;
+  function handleToggleDarkMode() {
+    setDarkMode(!isDarkMode);
   }
 
-  // Pre-configured hot spots around UST for quick testing
-  const HOT_SPOTS = [
-    { name: 'UST Dapitan Gate', lat: 14.6115, lng: 120.9885 },
-    { name: 'España Overpass', lat: 14.6072, lng: 120.9895 },
-    { name: 'P. Noval Dorms', lat: 14.6075, lng: 120.9855 },
-    { name: 'Lacson Terminal', lat: 14.6120, lng: 120.9930 },
-  ];
+  function handleToggleLanguage() {
+    language = language === 'tl' ? 'en' : 'tl';
+  }
+
+  function handleToggleTextScale() {
+    largeText = !largeText;
+  }
+
+  function handleStartFromLanding() {
+    router.navigate('intent');
+  }
+
+  function handleSelectRole(role: UserRole) {
+    if (role === 'buyer') {
+      showBuyerPrompt = true;
+      showVendorPrompt = false;
+    } else {
+      showVendorPrompt = true;
+      showBuyerPrompt = false;
+    }
+  }
+
+  function handleConfirmBuyerLocation(locationName: string, lat: number, lng: number) {
+    const newSession: UserSession = {
+      role: 'buyer',
+      locationName,
+      lat,
+      lng,
+      createdAt: new Date().toISOString(),
+    };
+    showBuyerPrompt = false;
+    saveSessionAndNavigate(newSession, 'map');
+  }
+
+  function handleConfirmVendor(product: string, productType: ProductType, photoUrl?: string) {
+    const defaultLat = 14.6091; // España / Manila
+    const defaultLng = 120.9898;
+
+    const newSession: UserSession = {
+      role: 'vendor',
+      locationName: 'España / Sampaloc, Manila',
+      lat: defaultLat,
+      lng: defaultLng,
+      product,
+      verifiedPhoto: photoUrl,
+      createdAt: new Date().toISOString(),
+    };
+    showVendorPrompt = false;
+    saveSessionAndNavigate(newSession, 'map');
+  }
+
+  function saveSessionAndNavigate(newSession: UserSession, targetRoute: PageRoute) {
+    session = newSession;
+    activeVendors = generateTaggedVendorsAround(newSession.lat, newSession.lng);
+
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('pwestoradar_session', JSON.stringify(newSession));
+    }
+
+    router.navigate(targetRoute);
+  }
+
+  function handleSwitchRole() {
+    if (!session) return;
+    const newRole: UserRole = session.role === 'buyer' ? 'vendor' : 'buyer';
+    session = {
+      ...session,
+      role: newRole,
+      product: newRole === 'vendor' ? (session.product || 'Taho') : undefined,
+    };
+
+    localStorage.setItem('pwestoradar_session', JSON.stringify(session));
+  }
+
+  function handleUpdateVendorProduct(product: string) {
+    if (!session) return;
+    session = { ...session, product };
+    localStorage.setItem('pwestoradar_session', JSON.stringify(session));
+  }
+
+  function handleResetSession() {
+    localStorage.removeItem('pwestoradar_session');
+    session = null;
+    showBuyerPrompt = false;
+    showVendorPrompt = false;
+    router.navigate('landing');
+  }
 </script>
 
-<main class={`min-h-screen flex flex-col bg-[#FAF7F2] ${largeText ? 'text-lg' : 'text-base'}`}>
-  <!-- Navigation Header -->
-  <Navbar
-    {currentView}
-    {language}
-    {largeText}
-    onViewChange={(view) => (currentView = view)}
-    onLanguageToggle={() => (language = language === 'tl' ? 'en' : 'tl')}
-    onTextScaleToggle={() => (largeText = !largeText)}
-  />
+<main class={`w-full min-h-screen antialiased transition-colors duration-300 ${largeText ? 'text-lg' : 'text-base'} ${
+  isDarkMode ? 'bg-[#1A120B] text-[#FAF7F2]' : 'bg-[#FAF7F2] text-[#4A2E1B]'
+}`}>
+  <!-- ROUTE 1: LANDING PAGE -->
+  {#if currentRoute === 'landing'}
+    <LandingPage
+      {language}
+      {isDarkMode}
+      onToggleDarkMode={handleToggleDarkMode}
+      onStart={handleStartFromLanding}
+      onSelectRoleDirect={handleSelectRole}
+    />
 
-  <!-- Main Container -->
-  <div class="flex-1 max-w-6xl w-full mx-auto p-3 sm:p-6 space-y-4">
-    <!-- Interactive Map Section -->
-    <div class="h-[360px] sm:h-[420px] w-full">
-      <MapView
-        centerLat={14.6095}
-        centerLng={120.9895}
-        {selectedLat}
-        {selectedLng}
-        transitAnchors={SAMPLE_TRANSIT_ANCHORS}
-        {liveVendors}
-        activeVendorRadarM={selectedArchetype.idealWalkingRadiusM}
-        onSelectLocation={handleSelectLocation}
-      />
-    </div>
+  <!-- ROUTE 2: INTENT (BIBILI O MAGBEBENTA) -->
+  {:else if currentRoute === 'intent'}
+    <IntentModal
+      {language}
+      onSelect={handleSelectRole}
+      onBack={() => router.navigate('landing')}
+    />
 
-    <!-- Quick Location Shortcuts -->
-    <div class="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
-      <span class="text-[#796658] font-bold whitespace-nowrap pl-1">
-        {language === 'tl' ? 'Subukan ang lugar:' : 'Quick Spots:'}
-      </span>
-      {#each HOT_SPOTS as spot}
-        <button
-          type="button"
-          on:click={() => handleSelectLocation(spot.lat, spot.lng)}
-          class={`px-3 py-1.5 rounded-full border text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
-            Math.abs(selectedLat - spot.lat) < 0.0005 && Math.abs(selectedLng - spot.lng) < 0.0005
-              ? 'bg-[#4A2E1B] text-[#FAF7F2] border-[#4A2E1B]'
-              : 'bg-white text-[#4A2E1B] border-[#EFE9DF] hover:border-[#D97706]'
-          }`}
-        >
-          📍 {spot.name}
-        </button>
-      {/each}
-    </div>
-
-    <!-- View-Specific Controls -->
-    {#if currentView === 'pwesto'}
-      <ViabilityCard
-        {archetypes}
-        {selectedArchetype}
-        viability={viabilityResult}
+  <!-- ROUTE 3: FULL SCREEN MAP PAGE -->
+  {:else if currentRoute === 'map'}
+    {#if session}
+      <MapPage
+        {session}
+        vendors={activeVendors}
         {language}
-        onSelectArchetype={(a) => (selectedArchetype = a)}
+        {isDarkMode}
+        onToggleDarkMode={handleToggleDarkMode}
+        onSwitchRole={handleSwitchRole}
+        onResetSession={handleResetSession}
+        onNavigate={(r) => router.navigate(r as PageRoute)}
       />
-    {:else if currentView === 'radar'}
-      <BuyerRadar
-        vendors={liveVendors}
+    {:else}
+      <LandingPage
         {language}
-        onSelectVendor={handleSelectVendor}
-      />
-    {:else if currentView === 'tinda'}
-      <VendorBroadcast
-        {language}
+        {isDarkMode}
+        onToggleDarkMode={handleToggleDarkMode}
+        onStart={handleStartFromLanding}
+        onSelectRoleDirect={handleSelectRole}
       />
     {/if}
-  </div>
 
-  <!-- Footer -->
-  <footer class="w-full border-t border-[#EFE9DF] py-4 px-4 text-center text-xs text-[#796658] mt-8 bg-white/50">
-    <div class="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
-      <p>
-        <strong>PwestoRadar</strong> — Developed for <strong>UST CSSPrint 2026</strong>
-      </p>
-      <p class="text-[11px]">
-        {language === 'tl'
-          ? 'Simpleng teknolohiya para sa bawat maninindang Pilipino.'
-          : 'Accessible spatial technology for Filipino street entrepreneurs.'}
-      </p>
-    </div>
-  </footer>
+  <!-- ROUTE 4: VENDOR DASHBOARD PAGE -->
+  {:else if currentRoute === 'vendor'}
+    {#if session}
+      <VendorPage
+        {session}
+        {language}
+        {isDarkMode}
+        onUpdateProduct={handleUpdateVendorProduct}
+        onNavigate={(r) => router.navigate(r as PageRoute)}
+      />
+    {:else}
+      <LandingPage
+        {language}
+        {isDarkMode}
+        onToggleDarkMode={handleToggleDarkMode}
+        onStart={handleStartFromLanding}
+        onSelectRoleDirect={handleSelectRole}
+      />
+    {/if}
+
+  <!-- ROUTE 5: SETTINGS PAGE -->
+  {:else if currentRoute === 'settings'}
+    <SettingsPage
+      {language}
+      {isDarkMode}
+      {largeText}
+      {session}
+      onToggleDarkMode={handleToggleDarkMode}
+      onToggleLanguage={handleToggleLanguage}
+      onToggleTextScale={handleToggleTextScale}
+      onSwitchRole={handleSwitchRole}
+      onResetSession={handleResetSession}
+      onNavigate={(r) => router.navigate(r as PageRoute)}
+    />
+
+  <!-- ROUTE 6: SEARCH PAGE -->
+  {:else if currentRoute === 'search'}
+    <SearchPage
+      {language}
+      {isDarkMode}
+      onConfirmLocation={handleConfirmBuyerLocation}
+      onNavigate={(r) => router.navigate(r as PageRoute)}
+    />
+  {/if}
+
+  <!-- POPUP PROMPTS -->
+  {#if showBuyerPrompt}
+    <BuyerSearchPrompt
+      {language}
+      onConfirmLocation={handleConfirmBuyerLocation}
+      onBack={() => (showBuyerPrompt = false)}
+    />
+  {/if}
+
+  {#if showVendorPrompt}
+    <VendorOnboardingPrompt
+      {language}
+      onConfirmVendor={handleConfirmVendor}
+      onBack={() => (showVendorPrompt = false)}
+    />
+  {/if}
 </main>

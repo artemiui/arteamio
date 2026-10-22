@@ -1,6 +1,59 @@
 export type Language = 'tl' | 'en';
 
+export type UserRole = 'buyer' | 'vendor' | 'customer';
+
 export type ViewMode = 'pwesto' | 'radar' | 'tinda';
+
+export type ProductType = 'taho' | 'siomai' | 'balut' | 'balot' | 'other';
+
+export interface UserSession {
+  role: UserRole;
+  locationName: string;
+  lat: number;
+  lng: number;
+  product?: string;
+  verifiedPhoto?: string;
+  createdAt: string;
+}
+
+export interface UserLocationProfile {
+  role: UserRole;
+  lat: number;
+  lng: number;
+  locationName: string;
+  source: 'gps' | 'manual';
+  completedAt: string;
+}
+
+export interface TaggedVendor {
+  id: string;
+  name: string;
+  productType: ProductType;
+  productName: string;
+  productNameTl: string;
+  icon: string;
+  price: string;
+  lat: number;
+  lng: number;
+  distanceM: number;
+  etaMins: number;
+  status: 'live' | 'stopped' | 'sold_out';
+  verifiedPhoto?: string;
+}
+
+export interface LiveVendor {
+  id: string;
+  name: string;
+  item: string;
+  itemTl: string;
+  icon: string;
+  lat: number;
+  lng: number;
+  status: 'active' | 'moving' | 'sold_out';
+  distanceM: number;
+  etaMins: number;
+  lastUpdated: string;
+}
 
 export interface BusinessArchetype {
   id: string;
@@ -8,8 +61,8 @@ export interface BusinessArchetype {
   nameTl: string;
   icon: string;
   typicalPrice: number;
-  transitWeight: number; // Sensitivity to transit anchors
-  competitorPenalty: number; // Penalty weight for nearby competition
+  transitWeight: number;
+  competitorPenalty: number;
   idealWalkingRadiusM: number;
   peakHours: string;
   peakHoursTl: string;
@@ -33,7 +86,7 @@ export interface CompetitorNode {
 }
 
 export interface ViabilityResult {
-  score: number; // 0 - 100
+  score: number;
   ratingTl: string;
   ratingEn: string;
   nearestAnchorName: string;
@@ -42,18 +95,4 @@ export interface ViabilityResult {
   competitorCountWithin150m: number;
   peakHoursTl: string;
   peakHoursEn: string;
-}
-
-export interface LiveVendor {
-  id: string;
-  name: string;
-  item: string;
-  itemTl: string;
-  icon: string;
-  lat: number;
-  lng: number;
-  status: 'active' | 'moving' | 'sold_out';
-  distanceM: number;
-  etaMins: number;
-  lastUpdated: string;
 }
