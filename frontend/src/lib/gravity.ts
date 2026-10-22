@@ -113,7 +113,7 @@ export function evaluateLocationViability(
     score: clampedScore,
     ratingTl,
     ratingEn,
-    nearestAnchorName: nearestAnchor ? nearestAnchor.name : 'España Blvd',
+    nearestAnchorName: nearestAnchor ? nearestAnchor.name : 'Pangunahing Sakayan',
     nearestAnchorDistM: minAnchorDist === Infinity ? 100 : minAnchorDist,
     anchorCountWithin300m: anchorsWithin300m,
     competitorCountWithin150m: competitorsWithin150m,

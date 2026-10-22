@@ -15,6 +15,8 @@
   export let isDarkMode: boolean = false;
   export let session: UserSession | null = null;
   export let activeHotspots: DemandHotspot[] = [];
+  export let defaultLat: number | undefined = undefined;
+  export let defaultLng: number | undefined = undefined;
   export let onClose: () => void;
   export let onHotspotsUpdated: () => void;
 
@@ -29,8 +31,8 @@
   let estimatedStudents: number = 2500;
   let favoriteMeriendaTl: string = 'Taho, Siomai Rice, at Gulaman';
   let favoriteMeriendaEn: string = 'Taho, Siomai Rice, and Cold Drinks';
-  let schoolLat: number = session?.lat || 14.6091;
-  let schoolLng: number = session?.lng || 120.9898;
+  let schoolLat: number = defaultLat ?? session?.lat ?? 14.6091;
+  let schoolLng: number = defaultLng ?? session?.lng ?? 120.9898;
 
   // Event Form State
   let eventTitle: string = '';
@@ -44,8 +46,8 @@
     'Siksikan ang mga manonood at manlalaro. Mataas ang gana sa malamig na pampalamig, siomai, at balot habang nanonood ng palaro.';
   let eventDemandExplanationEn: string =
     'Crowded spectators and players looking for cold drinks, siomai, and balut snacks during the game.';
-  let eventLat: number = session?.lat || 14.6091;
-  let eventLng: number = session?.lng || 120.9898;
+  let eventLat: number = defaultLat ?? session?.lat ?? 14.6091;
+  let eventLng: number = defaultLng ?? session?.lng ?? 120.9898;
 
   // Feedback toast
   let statusMessage: string | null = null;

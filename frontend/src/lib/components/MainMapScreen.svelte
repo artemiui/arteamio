@@ -2,7 +2,7 @@
   import { onMount, onDestroy } from 'svelte';
   import type { DemandHotspot, DemandHotspotCategory, Language, ProductType, TaggedVendor, UserSession } from '../types';
   import { BUSINESS_ARCHETYPES, generateAnchorsAround, generateCompetitorsAround, PRODUCT_LEGEND } from '../data/spots';
-  import { getAllDemandHotspots, HOTSPOT_CATEGORY_META, HOTSPOT_LEVEL_META } from '../data/hotspots';
+  import { getAllDemandHotspots, getDemandHotspotsForViewport, HOTSPOT_CATEGORY_META, HOTSPOT_LEVEL_META } from '../data/hotspots';
   import { evaluateLocationViability, calculateDistanceM } from '../gravity';
   import Logo from './Logo.svelte';
   import HotspotDetailCard from './HotspotDetailCard.svelte';
@@ -15,6 +15,7 @@
   export let vendors: TaggedVendor[];
   export let language: Language = 'tl';
   export let isDarkMode: boolean = false;
+  export let onToggleDarkMode: (() => void) | undefined = undefined;
   export let onNavigateToLanding: (() => void) | undefined = undefined;
   export let onSwitchRole: () => void;
   export let onResetSession: () => void;
@@ -38,16 +39,19 @@
   let hotspotMarkers: L.Marker[] = [];
   let showHotspotConfigModal: boolean = false;
   let sidebarActiveTab: 'vendors' | 'hotspots' = 'vendors';
+  let mapCenterLat: number = session.lat;
+  let mapCenterLng: number = session.lng;
+  let currentViewportBounds: { north: number; south: number; east: number; west: number } | null = null;
 
   // Selected filter (null = all)
   let activeFilter: ProductType | null = null;
   let selectedVendor: TaggedVendor | null = null;
 
   // Huff Gravity Model Viability Evaluation for Vendor
-  $: anchors = generateAnchorsAround(session.lat, session.lng);
-  $: competitors = generateCompetitorsAround(session.lat, session.lng);
+  $: anchors = generateAnchorsAround(mapCenterLat, mapCenterLng);
+  $: competitors = generateCompetitorsAround(mapCenterLat, mapCenterLng);
   let selectedArchetype = BUSINESS_ARCHETYPES.find((a) => a.id === session.product?.toLowerCase()) || BUSINESS_ARCHETYPES[2];
-  $: viability = evaluateLocationViability(session.lat, session.lng, selectedArchetype, anchors, competitors);
+  $: viability = evaluateLocationViability(mapCenterLat, mapCenterLng, selectedArchetype, anchors, competitors);
 
   let viabilityMarker: L.Marker | null = null;
   let viabilityLine: L.Polyline | null = null;
@@ -58,6 +62,8 @@
   $: if (map && (session.lat !== currentSessionLat || session.lng !== currentSessionLng)) {
     currentSessionLat = session.lat;
     currentSessionLng = session.lng;
+    mapCenterLat = session.lat;
+    mapCenterLng = session.lng;
     map.flyTo([session.lat, session.lng], 16, { duration: 0.6 });
     reloadHotspots();
     renderMapElements();
@@ -66,10 +72,13 @@
   // Recommended viability spot for vendor ("Saan Magandang Pepwesto")
   $: recommendedViabilitySpot = (() => {
     if (session.role !== 'vendor' || !anchors || anchors.length === 0) return null;
+    const distFromUser = calculateDistanceM(session.lat, session.lng, mapCenterLat, mapCenterLng);
+    const refLat = distFromUser < 1500 ? session.lat : mapCenterLat;
+    const refLng = distFromUser < 1500 ? session.lng : mapCenterLng;
     let nearest = anchors[0];
-    let minD = calculateDistanceM(session.lat, session.lng, nearest.lat, nearest.lng);
+    let minD = calculateDistanceM(refLat, refLng, nearest.lat, nearest.lng);
     for (const a of anchors) {
-      const d = calculateDistanceM(session.lat, session.lng, a.lat, a.lng);
+      const d = calculateDistanceM(refLat, refLng, a.lat, a.lng);
       if (d < minD) {
         nearest = a;
         minD = d;
@@ -81,6 +90,7 @@
       ratingTl: viability.ratingTl,
       ratingEn: viability.ratingEn,
       score: viability.score,
+      isNearUser: distFromUser < 1500,
     };
   })();
 
@@ -120,12 +130,14 @@
     }
 
     applyMapTileTheme();
+    map.on('moveend', handleMapMoveEnd);
     reloadHotspots();
     renderMapElements();
   });
 
   onDestroy(() => {
     if (map) {
+      map.off('moveend', handleMapMoveEnd);
       if (viabilityMarker) map.removeLayer(viabilityMarker);
       if (viabilityLine) map.removeLayer(viabilityLine);
       hotspotCircles.forEach((c) => map?.removeLayer(c));
@@ -153,8 +165,37 @@
     }).addTo(map);
   }
 
+  function handleMapMoveEnd() {
+    if (!map) return;
+    const center = map.getCenter();
+    const b = map.getBounds();
+    mapCenterLat = Number(center.lat.toFixed(5));
+    mapCenterLng = Number(center.lng.toFixed(5));
+    currentViewportBounds = {
+      north: b.getNorth(),
+      south: b.getSouth(),
+      east: b.getEast(),
+      west: b.getWest(),
+    };
+    reloadHotspots();
+  }
+
   function reloadHotspots() {
-    demandHotspots = getAllDemandHotspots(session.lat, session.lng);
+    if (!map) {
+      demandHotspots = getAllDemandHotspots(session.lat, session.lng);
+      return;
+    }
+    const center = map.getCenter();
+    const b = map.getBounds();
+    mapCenterLat = Number(center.lat.toFixed(5));
+    mapCenterLng = Number(center.lng.toFixed(5));
+    currentViewportBounds = {
+      north: b.getNorth(),
+      south: b.getSouth(),
+      east: b.getEast(),
+      west: b.getWest(),
+    };
+    demandHotspots = getDemandHotspotsForViewport(currentViewportBounds, center.lat, center.lng, map.getZoom());
   }
 
   function handleTargetLocation(lat: number, lng: number) {
@@ -328,10 +369,12 @@
 
     // 5. Render Recommended Viability Spot & Distance Line (For Vendor: "Saan Magandang Pepwesto")
     if (session.role === 'vendor' && recommendedViabilitySpot) {
-      // Dashed distance line from vendor's current pin to the recommended spot
+      // Dashed distance line from vendor pin (or explored area center) to recommended spot
+      const originLat = recommendedViabilitySpot.isNearUser ? session.lat : mapCenterLat;
+      const originLng = recommendedViabilitySpot.isNearUser ? session.lng : mapCenterLng;
       viabilityLine = L.polyline(
         [
-          [session.lat, session.lng],
+          [originLat, originLng],
           [recommendedViabilitySpot.lat, recommendedViabilitySpot.lng],
         ],
         {
@@ -1424,6 +1467,8 @@
       {language}
       {isDarkMode}
       {session}
+      defaultLat={mapCenterLat}
+      defaultLng={mapCenterLng}
       activeHotspots={demandHotspots}
       onClose={() => (showHotspotConfigModal = false)}
       onHotspotsUpdated={() => {
