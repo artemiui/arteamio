@@ -1,6 +1,8 @@
 <script lang="ts">
-  import type { Language, UserSession } from '../lib/types';
+  import type { DemandHotspot, Language, UserSession } from '../lib/types';
+  import { getAllDemandHotspots } from '../lib/data/hotspots';
   import Logo from '../lib/components/Logo.svelte';
+  import HotspotConfigModal from '../lib/components/HotspotConfigModal.svelte';
 
   export let language: Language = 'tl';
   export let isDarkMode: boolean = false;
@@ -14,6 +16,12 @@
   export let onNavigate: (route: string) => void;
 
   let testChimePlayed: boolean = false;
+  let showHotspotConfigModal: boolean = false;
+  let hotspots: DemandHotspot[] = getAllDemandHotspots(session?.lat || 14.6091, session?.lng || 120.9898);
+
+  function reloadHotspots() {
+    hotspots = getAllDemandHotspots(session?.lat || 14.6091, session?.lng || 120.9898);
+  }
 
   function playTestChime() {
     testChimePlayed = true;
@@ -217,7 +225,36 @@
         </div>
       </section>
 
-      <!-- 5. TUNGKOL SA APP AT EVENT -->
+      <!-- 5. ISKEDYUL AT DEMAND HOTSPOTS CONFIGURATION -->
+      <section class={`p-5 rounded-[28px] border space-y-3 ${
+        isDarkMode ? 'bg-[#271A10] border-[#3D2717]' : 'bg-white border-[#EAE4D9]'
+      }`}>
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-sm font-extrabold flex items-center gap-1.5">
+              <span>🔥</span>
+              <span>{language === 'tl' ? 'Iskedyul ng Paaralan at Events' : 'School Schedules & Events'}</span>
+            </h2>
+            <p class={`text-xs font-medium mt-0.5 ${isDarkMode ? 'text-[#D6C7B2]' : 'text-[#796658]'}`}>
+              {language === 'tl'
+                ? `I-configure ang mga oras ng uwian, liga sa basketball, at barangay events (${hotspots.length} aktibo).`
+                : `Configure school dismissal times, basketball tournaments, and barangay events (${hotspots.length} active).`}
+            </p>
+          </div>
+
+          <button
+            type="button"
+            on:click={() => (showHotspotConfigModal = true)}
+            class={`px-4 py-2 rounded-full border text-xs font-bold cursor-pointer shadow-xs ${
+              isDarkMode ? 'bg-[#352317] border-[#3D2717] text-white hover:bg-[#4A2E1B]' : 'bg-[#FAF7F2] border-[#EAE4D9] text-[#4A2E1B] hover:bg-white'
+            }`}
+          >
+            ⚙️ {language === 'tl' ? 'Pamahalaan' : 'Configure'}
+          </button>
+        </div>
+      </section>
+
+      <!-- 6. TUNGKOL SA APP AT EVENT -->
       <section class={`p-5 rounded-[28px] border space-y-2 ${
         isDarkMode ? 'bg-[#271A10] border-[#3D2717]' : 'bg-white border-[#EAE4D9]'
       }`}>
@@ -232,7 +269,7 @@
         </div>
       </section>
 
-      <!-- 6. RESET DATA -->
+      <!-- 7. RESET DATA -->
       <div class="pt-2 text-center">
         <button
           type="button"
@@ -244,4 +281,15 @@
       </div>
     </div>
   </div>
+
+  {#if showHotspotConfigModal}
+    <HotspotConfigModal
+      {language}
+      {isDarkMode}
+      {session}
+      activeHotspots={hotspots}
+      onClose={() => (showHotspotConfigModal = false)}
+      onHotspotsUpdated={reloadHotspots}
+    />
+  {/if}
 </div>

@@ -1,15 +1,19 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
-  import type { Language, ProductType, TaggedVendor, UserSession } from '../types';
+  import type { DemandHotspot, DemandHotspotCategory, Language, ProductType, TaggedVendor, UserSession } from '../types';
   import { BUSINESS_ARCHETYPES, generateAnchorsAround, generateCompetitorsAround, PRODUCT_LEGEND } from '../data/spots';
+  import { getAllDemandHotspots, HOTSPOT_CATEGORY_META, HOTSPOT_LEVEL_META } from '../data/hotspots';
   import { evaluateLocationViability } from '../gravity';
   import Logo from './Logo.svelte';
+  import HotspotDetailCard from './HotspotDetailCard.svelte';
+  import HotspotConfigModal from './HotspotConfigModal.svelte';
   import L from 'leaflet';
 
   export let session: UserSession;
   export let vendors: TaggedVendor[];
   export let language: Language = 'tl';
   export let isDarkMode: boolean = false;
+  export let onToggleDarkMode: (() => void) | undefined = undefined;
   export let onNavigateToLanding: (() => void) | undefined = undefined;
   export let onSwitchRole: () => void;
   export let onResetSession: () => void;
@@ -23,6 +27,16 @@
   let vendorMarkers: L.Marker[] = [];
   let userMarker: L.Marker | null = null;
   let userCircle: L.Circle | null = null;
+
+  // Demand Hotspots State
+  let isHotspotsVisible: boolean = true;
+  let demandHotspots: DemandHotspot[] = [];
+  let activeHotspotCategory: DemandHotspotCategory | 'all' = 'all';
+  let selectedHotspot: DemandHotspot | null = null;
+  let hotspotCircles: L.Circle[] = [];
+  let hotspotMarkers: L.Marker[] = [];
+  let showHotspotConfigModal: boolean = false;
+  let sidebarActiveTab: 'vendors' | 'hotspots' = 'vendors';
 
   // Selected filter (null = all)
   let activeFilter: ProductType | null = null;
@@ -70,11 +84,14 @@
     }
 
     applyMapTileTheme();
+    reloadHotspots();
     renderMapElements();
   });
 
   onDestroy(() => {
     if (map) {
+      hotspotCircles.forEach((c) => map?.removeLayer(c));
+      hotspotMarkers.forEach((m) => map?.removeLayer(m));
       map.remove();
       map = null;
     }
@@ -98,12 +115,25 @@
     }).addTo(map);
   }
 
+  function reloadHotspots() {
+    demandHotspots = getAllDemandHotspots(session.lat, session.lng);
+  }
+
+  function handleTargetLocation(lat: number, lng: number) {
+    if (map) {
+      map.flyTo([lat, lng], 17, { duration: 0.6 });
+    }
+  }
 
   $: filteredVendors = activeFilter
     ? vendors.filter((v) => v.productType === activeFilter)
     : vendors;
 
-  $: if (map && (filteredVendors || session || isDarkMode)) {
+  $: listHotspots = activeHotspotCategory === 'all'
+    ? demandHotspots
+    : demandHotspots.filter((h) => h.category === activeHotspotCategory);
+
+  $: if (map && (filteredVendors || session || isDarkMode || isHotspotsVisible || activeHotspotCategory || demandHotspots || selectedHotspot)) {
     renderMapElements();
   }
 
@@ -176,11 +206,77 @@
 
       m.on('click', () => {
         selectedVendor = vendor;
+        selectedHotspot = null;
         map?.flyTo([vendor.lat, vendor.lng], 16, { duration: 0.5 });
       });
 
       vendorMarkers.push(m);
     });
+
+    // 4. Render Demand Hotspots (Student dismissals, barangay events, basketball games, commuter rush)
+    hotspotCircles.forEach((c) => map?.removeLayer(c));
+    hotspotCircles = [];
+    hotspotMarkers.forEach((m) => map?.removeLayer(m));
+    hotspotMarkers = [];
+
+    if (isHotspotsVisible) {
+      const hotspotsToRender = activeHotspotCategory === 'all'
+        ? demandHotspots
+        : demandHotspots.filter((h) => h.category === activeHotspotCategory);
+
+      hotspotsToRender.forEach((hotspot) => {
+        const isSelected = selectedHotspot?.id === hotspot.id;
+        const lvlMeta = HOTSPOT_LEVEL_META[hotspot.potentialLevel] || HOTSPOT_LEVEL_META.medium;
+        const catMeta = HOTSPOT_CATEGORY_META[hotspot.category] || HOTSPOT_CATEGORY_META.barangay;
+
+        // Color-coded hotspot catchment circle
+        const circle = L.circle([hotspot.lat, hotspot.lng], {
+          radius: hotspot.radiusM,
+          color: lvlMeta.mapStroke,
+          fillColor: lvlMeta.mapFill,
+          fillOpacity: isSelected ? 0.35 : 0.18,
+          weight: isSelected ? 3 : 2,
+          dashArray: hotspot.potentialLevel === 'high' ? undefined : '4, 4',
+        }).addTo(map!);
+
+        circle.on('click', () => {
+          selectedHotspot = hotspot;
+          selectedVendor = null;
+          map?.flyTo([hotspot.lat, hotspot.lng], 16, { duration: 0.5 });
+        });
+        hotspotCircles.push(circle);
+
+        // Color-coded hotspot marker badge with Category Icon & Opportunity Score
+        const markerHtml = `
+          <div class="relative flex items-center justify-center cursor-pointer transition-transform hover:scale-110 active:scale-95 group">
+            ${hotspot.potentialLevel === 'high' ? `<span class="absolute w-12 h-12 rounded-full animate-ping opacity-35" style="background-color: ${lvlMeta.mapFill}"></span>` : ''}
+            <div class="px-2.5 py-1 rounded-xl shadow-lg flex items-center gap-1.5 border font-black text-xs transition-transform ${isSelected ? 'scale-110 ring-2 ring-white dark:ring-black' : ''}" style="background-color: ${isDarkMode ? '#271A10' : '#FFFFFF'}; border-color: ${lvlMeta.mapStroke}; color: ${isDarkMode ? '#FAF7F2' : '#4A2E1B'};">
+              <span class="text-sm">${catMeta.icon}</span>
+              <span class="text-[10px] px-1.5 py-0.5 rounded-full text-white font-extrabold" style="background-color: ${lvlMeta.mapFill}">
+                ${hotspot.opportunityScore}
+              </span>
+            </div>
+          </div>
+        `;
+
+        const m = L.marker([hotspot.lat, hotspot.lng], {
+          icon: L.divIcon({
+            html: markerHtml,
+            className: 'demand-hotspot-marker',
+            iconSize: [64, 32],
+            iconAnchor: [32, 16],
+          }),
+          zIndexOffset: isSelected ? 900 : (hotspot.potentialLevel === 'high' ? 700 : 600),
+        }).addTo(map!);
+
+        m.on('click', () => {
+          selectedHotspot = hotspot;
+          selectedVendor = null;
+          map?.flyTo([hotspot.lat, hotspot.lng], 16, { duration: 0.5 });
+        });
+        hotspotMarkers.push(m);
+      });
+    }
   }
 
   function handleRecenterGPS() {
@@ -261,6 +357,29 @@
           <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-[#D97706] text-white font-black">{filteredVendors.length}</span>
         </button>
 
+        <!-- Toggleable Demand Hotspots Layer Button -->
+        <button
+          type="button"
+          on:click={() => {
+            isHotspotsVisible = !isHotspotsVisible;
+            if (isHotspotsVisible && demandHotspots.length === 0) {
+              reloadHotspots();
+            }
+          }}
+          class={`px-2.5 sm:px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 text-xs font-black cursor-pointer shadow-xs active:scale-95 ${
+            isHotspotsVisible
+              ? 'bg-[#EF4444] text-white shadow-xs'
+              : isDarkMode
+                ? 'bg-[#271A10] hover:bg-[#352317] text-[#FAF7F2]'
+                : 'bg-[#FAF7F2] hover:bg-[#EAE4D9] text-[#4A2E1B]'
+          }`}
+          title={language === 'tl' ? 'I-toggle ang Demand Hotspots' : 'Toggle Demand Hotspots'}
+        >
+          <span>🔥</span>
+          <span class="hidden sm:inline">{language === 'tl' ? 'Hotspots' : 'Hotspots'}</span>
+          <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-black/25 text-white font-black">{demandHotspots.length}</span>
+        </button>
+
         {#if session.role === 'vendor'}
           <button
             type="button"
@@ -329,6 +448,91 @@
     </div>
   </header>
 
+  <!-- FLOATING DEMAND HOTSPOT FILTER BAR -->
+  {#if isHotspotsVisible}
+    <div
+      class={`absolute top-18 sm:top-22 inset-x-3 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 z-20 flex items-center justify-center gap-1.5 p-1.5 rounded-2xl backdrop-blur-md shadow-lg border overflow-x-auto max-w-[95vw] pointer-events-auto transition-colors animate-fade-in ${
+        isDarkMode ? 'bg-[#1A120B]/95 border-[#3D2717] text-[#FAF7F2]' : 'bg-white/95 border-[#EAE4D9] text-[#4A2E1B]'
+      }`}
+    >
+      <button
+        type="button"
+        on:click={() => (activeHotspotCategory = 'all')}
+        class={`px-3 py-1 rounded-xl text-xs font-black transition cursor-pointer whitespace-nowrap ${
+          activeHotspotCategory === 'all'
+            ? 'bg-[#EF4444] text-white shadow-xs'
+            : (isDarkMode ? 'hover:bg-[#271A10]' : 'hover:bg-[#FAF7F2]')
+        }`}
+      >
+        {language === 'tl' ? 'Lahat ng Hotspot' : 'All Hotspots'}
+      </button>
+
+      <button
+        type="button"
+        on:click={() => (activeHotspotCategory = 'school')}
+        class={`px-2.5 py-1 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1 whitespace-nowrap ${
+          activeHotspotCategory === 'school'
+            ? 'bg-[#2563EB] text-white shadow-xs'
+            : (isDarkMode ? 'hover:bg-[#271A10]' : 'hover:bg-[#FAF7F2]')
+        }`}
+      >
+        <span>🎓</span>
+        <span class="hidden xs:inline">{language === 'tl' ? 'Paaralan' : 'Schools'}</span>
+      </button>
+
+      <button
+        type="button"
+        on:click={() => (activeHotspotCategory = 'basketball')}
+        class={`px-2.5 py-1 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1 whitespace-nowrap ${
+          activeHotspotCategory === 'basketball'
+            ? 'bg-[#EA580C] text-white shadow-xs'
+            : (isDarkMode ? 'hover:bg-[#271A10]' : 'hover:bg-[#FAF7F2]')
+        }`}
+      >
+        <span>🏀</span>
+        <span class="hidden xs:inline">{language === 'tl' ? 'Basketball' : 'Basketball'}</span>
+      </button>
+
+      <button
+        type="button"
+        on:click={() => (activeHotspotCategory = 'barangay')}
+        class={`px-2.5 py-1 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1 whitespace-nowrap ${
+          activeHotspotCategory === 'barangay'
+            ? 'bg-[#059669] text-white shadow-xs'
+            : (isDarkMode ? 'hover:bg-[#271A10]' : 'hover:bg-[#FAF7F2]')
+        }`}
+      >
+        <span>🎪</span>
+        <span class="hidden xs:inline">{language === 'tl' ? 'Barangay' : 'Barangay'}</span>
+      </button>
+
+      <button
+        type="button"
+        on:click={() => (activeHotspotCategory = 'commuter')}
+        class={`px-2.5 py-1 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1 whitespace-nowrap ${
+          activeHotspotCategory === 'commuter'
+            ? 'bg-[#7C3AED] text-white shadow-xs'
+            : (isDarkMode ? 'hover:bg-[#271A10]' : 'hover:bg-[#FAF7F2]')
+        }`}
+      >
+        <span>🚌</span>
+        <span class="hidden xs:inline">{language === 'tl' ? 'Sakayan' : 'Commuters'}</span>
+      </button>
+
+      <div class="w-[1px] h-4 bg-black/10 dark:bg-white/10 mx-0.5"></div>
+
+      <button
+        type="button"
+        on:click={() => (showHotspotConfigModal = true)}
+        class="px-2.5 py-1 rounded-xl text-xs font-black bg-[#D97706]/15 hover:bg-[#D97706]/25 text-[#D97706] transition cursor-pointer flex items-center gap-1 whitespace-nowrap active:scale-95"
+        title="Magdagdag ng Event o Skedyul"
+      >
+        <span>➕</span>
+        <span>{language === 'tl' ? 'Mag-ulat' : 'Add'}</span>
+      </button>
+    </div>
+  {/if}
+
   <!-- TOGGLEABLE MOBILE SIDEBAR / FLOATING DESKTOP PANEL -->
   {#if isVendorListOpen}
     <!-- Mobile Backdrop Overlay -->
@@ -351,16 +555,15 @@
         isDarkMode ? 'border-white/10' : 'border-black/5'
       }`}>
         <div>
-          <div class="flex items-center gap-2">
-            <h3 class="text-sm sm:text-base font-black">
-              {language === 'tl' ? 'Mga Paninda sa Paligid' : 'Nearby Vendors'}
-            </h3>
-            <span class="text-xs px-2.5 py-0.5 rounded-full font-black bg-[#D97706]/15 text-[#D97706]">
-              {filteredVendors.length}
-            </span>
-          </div>
+          <h3 class="text-sm sm:text-base font-black">
+            {sidebarActiveTab === 'vendors'
+              ? (language === 'tl' ? 'Mga Paninda sa Paligid' : 'Nearby Vendors')
+              : (language === 'tl' ? 'Mga Demand Hotspot' : 'Demand Hotspots')}
+          </h3>
           <p class={`text-[11px] font-medium mt-0.5 ${isDarkMode ? 'text-[#D6C7B2]' : 'text-[#796658]'}`}>
-            {language === 'tl' ? 'Piliin upang puntahan sa mapa' : 'Tap to focus vendor on map'}
+            {sidebarActiveTab === 'vendors'
+              ? (language === 'tl' ? 'Piliin upang puntahan ang vendor' : 'Tap to focus vendor on map')
+              : (language === 'tl' ? 'Tukuyin ang mataas na bentahan' : 'Identify high-demand areas')}
           </p>
         </div>
 
@@ -378,119 +581,311 @@
         </button>
       </div>
 
-      <!-- Clean Product Category Filter Chips Inside Sidebar -->
-      <div class={`px-3 py-2.5 overflow-x-auto flex items-center gap-1.5 shrink-0 border-b ${
-        isDarkMode ? 'border-white/10 bg-[#271A10]/50' : 'border-black/5 bg-[#FAF7F2]/50'
+      <!-- Dual Tab Switcher: Vendors vs Demand Hotspots -->
+      <div class={`p-1.5 mx-3 mt-2 rounded-2xl flex items-center gap-1 border shrink-0 ${
+        isDarkMode ? 'bg-[#271A10] border-[#3D2717]' : 'bg-[#FAF7F2] border-[#EAE4D9]'
       }`}>
         <button
           type="button"
-          on:click={() => (activeFilter = null)}
-          class={`px-3 py-1 rounded-xl text-xs font-black whitespace-nowrap transition-all cursor-pointer ${
-            activeFilter === null
-              ? (isDarkMode ? 'bg-[#F59E0B] text-[#1A120B]' : 'bg-[#4A2E1B] text-[#FAF7F2]')
-              : (isDarkMode ? 'bg-[#271A10] text-[#FAF7F2] hover:bg-[#352317]' : 'bg-white text-[#4A2E1B] hover:bg-[#FAF7F2]')
+          on:click={() => (sidebarActiveTab = 'vendors')}
+          class={`flex-1 py-1.5 px-2 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 cursor-pointer ${
+            sidebarActiveTab === 'vendors'
+              ? (isDarkMode ? 'bg-[#F59E0B] text-[#1A120B]' : 'bg-[#4A2E1B] text-white shadow-xs')
+              : (isDarkMode ? 'text-[#D6C7B2] hover:bg-[#352317]' : 'text-[#796658] hover:bg-white')
           }`}
         >
-          {language === 'tl' ? 'Lahat' : 'All'}
+          <span>🛒</span>
+          <span>{language === 'tl' ? 'Paninda' : 'Vendors'}</span>
+          <span class="text-[10px] px-1.5 py-0.2 rounded-full bg-white/20 font-black">{filteredVendors.length}</span>
         </button>
 
-        {#each PRODUCT_LEGEND as item}
+        <button
+          type="button"
+          on:click={() => {
+            sidebarActiveTab = 'hotspots';
+            isHotspotsVisible = true;
+          }}
+          class={`flex-1 py-1.5 px-2 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 cursor-pointer ${
+            sidebarActiveTab === 'hotspots'
+              ? 'bg-[#EF4444] text-white shadow-xs'
+              : (isDarkMode ? 'text-[#D6C7B2] hover:bg-[#352317]' : 'text-[#796658] hover:bg-white')
+          }`}
+        >
+          <span>🔥</span>
+          <span>{language === 'tl' ? 'Hotspots' : 'Hotspots'}</span>
+          <span class="text-[10px] px-1.5 py-0.2 rounded-full bg-white/20 font-black">{demandHotspots.length}</span>
+        </button>
+      </div>
+
+      <!-- TAB 1 CONTENT: VENDORS -->
+      {#if sidebarActiveTab === 'vendors'}
+        <!-- Clean Product Category Filter Chips Inside Sidebar -->
+        <div class={`px-3 py-2.5 overflow-x-auto flex items-center gap-1.5 shrink-0 border-b ${
+          isDarkMode ? 'border-white/10 bg-[#271A10]/50' : 'border-black/5 bg-[#FAF7F2]/50'
+        }`}>
           <button
             type="button"
-            on:click={() => (activeFilter = activeFilter === item.type ? null : item.type)}
-            class={`px-3 py-1 rounded-xl text-xs font-black whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
-              activeFilter === item.type
-                ? (isDarkMode ? 'bg-[#F59E0B] text-[#1A120B] scale-102' : 'bg-[#4A2E1B] text-[#FAF7F2] scale-102')
+            on:click={() => (activeFilter = null)}
+            class={`px-3 py-1 rounded-xl text-xs font-black whitespace-nowrap transition-all cursor-pointer ${
+              activeFilter === null
+                ? (isDarkMode ? 'bg-[#F59E0B] text-[#1A120B]' : 'bg-[#4A2E1B] text-[#FAF7F2]')
                 : (isDarkMode ? 'bg-[#271A10] text-[#FAF7F2] hover:bg-[#352317]' : 'bg-white text-[#4A2E1B] hover:bg-[#FAF7F2]')
             }`}
           >
-            <span>{item.icon}</span>
-            <span>{language === 'tl' ? item.labelTl : item.labelEn}</span>
+            {language === 'tl' ? 'Lahat' : 'All'}
           </button>
-        {/each}
-      </div>
 
-      <!-- Scrollable Vendors List with Uploaded Photos -->
-      <div class="flex-1 overflow-y-auto p-3 space-y-2.5">
-        {#if filteredVendors.length === 0}
-          <div class="p-8 text-center text-xs opacity-60">
-            {language === 'tl' ? 'Walang nahanap na paninda sa kategoryang ito.' : 'No vendors found in this category.'}
-          </div>
-        {:else}
-          {#each filteredVendors as vendor}
-            <div
-              role="button"
-              tabindex="0"
-              on:click={() => {
-                selectedVendor = vendor;
-                map?.flyTo([vendor.lat, vendor.lng], 17, { duration: 0.5 });
-                if (typeof window !== 'undefined' && window.innerWidth < 640) {
-                  isVendorListOpen = false;
-                }
-              }}
-              on:keydown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  selectedVendor = vendor;
-                  map?.flyTo([vendor.lat, vendor.lng], 17, { duration: 0.5 });
-                }
-              }}
-              class={`p-3 rounded-2xl cursor-pointer transition-all flex items-start gap-3 shadow-xs active:scale-98 ${
-                selectedVendor?.id === vendor.id
-                  ? (isDarkMode ? 'bg-[#452B14] ring-2 ring-[#F59E0B]' : 'bg-[#FEF3C7] ring-2 ring-[#D97706]')
-                  : (isDarkMode ? 'bg-[#271A10] hover:bg-[#352317]' : 'bg-[#FAF7F2] hover:bg-[#F3EDE2]')
+          {#each PRODUCT_LEGEND as item}
+            <button
+              type="button"
+              on:click={() => (activeFilter = activeFilter === item.type ? null : item.type)}
+              class={`px-3 py-1 rounded-xl text-xs font-black whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
+                activeFilter === item.type
+                  ? (isDarkMode ? 'bg-[#F59E0B] text-[#1A120B] scale-102' : 'bg-[#4A2E1B] text-[#FAF7F2] scale-102')
+                  : (isDarkMode ? 'bg-[#271A10] text-[#FAF7F2] hover:bg-[#352317]' : 'bg-white text-[#4A2E1B] hover:bg-[#FAF7F2]')
               }`}
             >
-              <!-- Uploaded Photo with Status Badge -->
-              <div class="relative shrink-0">
-                {#if vendor.verifiedPhoto}
-                  <img
-                    src={vendor.verifiedPhoto}
-                    alt={vendor.name}
-                    class="w-16 h-16 sm:w-18 sm:h-18 rounded-xl object-cover shadow-xs"
-                  />
-                {:else}
-                  <div class="w-16 h-16 rounded-xl bg-[#EAE4D9] dark:bg-[#352317] flex items-center justify-center text-2xl">
-                    {vendor.icon}
-                  </div>
-                {/if}
-
-                <!-- Live Pulse Dot -->
-                {#if vendor.status === 'live'}
-                  <span class="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-green-500 ring-2 ring-white dark:ring-black"></span>
-                {/if}
-              </div>
-
-              <!-- Vendor Details -->
-              <div class="flex-1 min-w-0">
-                <div class="flex items-center justify-between gap-1">
-                  <h4 class="font-black text-sm truncate">{vendor.name}</h4>
-                  <span class="text-xs font-black text-[#D97706] shrink-0">{vendor.price}</span>
-                </div>
-
-                <p class={`text-xs font-semibold truncate ${isDarkMode ? 'text-[#D6C7B2]' : 'text-[#796658]'}`}>
-                  {language === 'tl' ? vendor.productNameTl : vendor.productName}
-                </p>
-
-                <div class="flex items-center justify-between mt-2 pt-1.5 border-t border-black/5 dark:border-white/5 text-[11px]">
-                  <span class={`font-bold ${isDarkMode ? 'text-[#D6C7B2]' : 'text-[#796658]'}`}>
-                    📍 {vendor.distanceM}m • ~{vendor.etaMins}m
-                  </span>
-
-                  <span class={`text-[10px] font-black px-2 py-0.5 rounded-full ${
-                    vendor.status === 'live'
-                      ? 'bg-green-500/15 text-green-500'
-                      : vendor.status === 'stopped'
-                        ? 'bg-amber-500/15 text-amber-500'
-                        : 'bg-red-500/15 text-red-500'
-                   }`}>
-                    {vendor.status === 'live' ? 'Naglilibot' : vendor.status === 'stopped' ? 'Nakatigil' : 'Ubos Na'}
-                  </span>
-                </div>
-              </div>
-            </div>
+              <span>{item.icon}</span>
+              <span>{language === 'tl' ? item.labelTl : item.labelEn}</span>
+            </button>
           {/each}
-        {/if}
-      </div>
+        </div>
+
+        <!-- Scrollable Vendors List with Uploaded Photos -->
+        <div class="flex-1 overflow-y-auto p-3 space-y-2.5">
+          {#if filteredVendors.length === 0}
+            <div class="p-8 text-center text-xs opacity-60">
+              {language === 'tl' ? 'Walang nahanap na paninda sa kategoryang ito.' : 'No vendors found in this category.'}
+            </div>
+          {:else}
+            {#each filteredVendors as vendor}
+              <div
+                role="button"
+                tabindex="0"
+                on:click={() => {
+                  selectedVendor = vendor;
+                  selectedHotspot = null;
+                  map?.flyTo([vendor.lat, vendor.lng], 17, { duration: 0.5 });
+                  if (typeof window !== 'undefined' && window.innerWidth < 640) {
+                    isVendorListOpen = false;
+                  }
+                }}
+                on:keydown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    selectedVendor = vendor;
+                    selectedHotspot = null;
+                    map?.flyTo([vendor.lat, vendor.lng], 17, { duration: 0.5 });
+                  }
+                }}
+                class={`p-3 rounded-2xl cursor-pointer transition-all flex items-start gap-3 shadow-xs active:scale-98 ${
+                  selectedVendor?.id === vendor.id
+                    ? (isDarkMode ? 'bg-[#452B14] ring-2 ring-[#F59E0B]' : 'bg-[#FEF3C7] ring-2 ring-[#D97706]')
+                    : (isDarkMode ? 'bg-[#271A10] hover:bg-[#352317]' : 'bg-[#FAF7F2] hover:bg-[#F3EDE2]')
+                }`}
+              >
+                <!-- Uploaded Photo with Status Badge -->
+                <div class="relative shrink-0">
+                  {#if vendor.verifiedPhoto}
+                    <img
+                      src={vendor.verifiedPhoto}
+                      alt={vendor.name}
+                      class="w-16 h-16 sm:w-18 sm:h-18 rounded-xl object-cover shadow-xs"
+                    />
+                  {:else}
+                    <div class="w-16 h-16 rounded-xl bg-[#EAE4D9] dark:bg-[#352317] flex items-center justify-center text-2xl">
+                      {vendor.icon}
+                    </div>
+                  {/if}
+
+                  <!-- Live Pulse Dot -->
+                  {#if vendor.status === 'live'}
+                    <span class="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-green-500 ring-2 ring-white dark:ring-black"></span>
+                  {/if}
+                </div>
+
+                <!-- Vendor Details -->
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center justify-between gap-1">
+                    <h4 class="font-black text-sm truncate">{vendor.name}</h4>
+                    <span class="text-xs font-black text-[#D97706] shrink-0">{vendor.price}</span>
+                  </div>
+
+                  <p class={`text-xs font-semibold truncate ${isDarkMode ? 'text-[#D6C7B2]' : 'text-[#796658]'}`}>
+                    {language === 'tl' ? vendor.productNameTl : vendor.productName}
+                  </p>
+
+                  <div class="flex items-center justify-between mt-2 pt-1.5 border-t border-black/5 dark:border-white/5 text-[11px]">
+                    <span class={`font-bold ${isDarkMode ? 'text-[#D6C7B2]' : 'text-[#796658]'}`}>
+                      📍 {vendor.distanceM}m • ~{vendor.etaMins}m
+                    </span>
+
+                    <span class={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                      vendor.status === 'live'
+                        ? 'bg-green-500/15 text-green-500'
+                        : vendor.status === 'stopped'
+                          ? 'bg-amber-500/15 text-amber-500'
+                          : 'bg-red-500/15 text-red-500'
+                     }`}>
+                      {vendor.status === 'live' ? 'Naglilibot' : vendor.status === 'stopped' ? 'Nakatigil' : 'Ubos Na'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            {/each}
+          {/if}
+        </div>
+
+      <!-- TAB 2 CONTENT: DEMAND HOTSPOTS -->
+      {:else}
+        <!-- Category Filter & Add Event Button -->
+        <div class={`px-3 py-2 overflow-x-auto flex items-center justify-between gap-1.5 shrink-0 border-b ${
+          isDarkMode ? 'border-white/10 bg-[#271A10]/50' : 'border-black/5 bg-[#FAF7F2]/50'
+        }`}>
+          <div class="flex items-center gap-1 overflow-x-auto">
+            <button
+              type="button"
+              on:click={() => (activeHotspotCategory = 'all')}
+              class={`px-2.5 py-1 rounded-xl text-[11px] font-black whitespace-nowrap transition cursor-pointer ${
+                activeHotspotCategory === 'all'
+                  ? 'bg-[#EF4444] text-white shadow-xs'
+                  : (isDarkMode ? 'bg-[#271A10] text-[#FAF7F2]' : 'bg-white text-[#4A2E1B]')
+              }`}
+            >
+              {language === 'tl' ? 'Lahat' : 'All'}
+            </button>
+            <button
+              type="button"
+              on:click={() => (activeHotspotCategory = 'school')}
+              class={`px-2 py-1 rounded-xl text-[11px] font-black whitespace-nowrap transition cursor-pointer ${
+                activeHotspotCategory === 'school'
+                  ? 'bg-[#2563EB] text-white shadow-xs'
+                  : (isDarkMode ? 'bg-[#271A10] text-[#FAF7F2]' : 'bg-white text-[#4A2E1B]')
+              }`}
+            >
+              🎓
+            </button>
+            <button
+              type="button"
+              on:click={() => (activeHotspotCategory = 'basketball')}
+              class={`px-2 py-1 rounded-xl text-[11px] font-black whitespace-nowrap transition cursor-pointer ${
+                activeHotspotCategory === 'basketball'
+                  ? 'bg-[#EA580C] text-white shadow-xs'
+                  : (isDarkMode ? 'bg-[#271A10] text-[#FAF7F2]' : 'bg-white text-[#4A2E1B]')
+              }`}
+            >
+              🏀
+            </button>
+            <button
+              type="button"
+              on:click={() => (activeHotspotCategory = 'barangay')}
+              class={`px-2 py-1 rounded-xl text-[11px] font-black whitespace-nowrap transition cursor-pointer ${
+                activeHotspotCategory === 'barangay'
+                  ? 'bg-[#059669] text-white shadow-xs'
+                  : (isDarkMode ? 'bg-[#271A10] text-[#FAF7F2]' : 'bg-white text-[#4A2E1B]')
+              }`}
+            >
+              🎪
+            </button>
+            <button
+              type="button"
+              on:click={() => (activeHotspotCategory = 'commuter')}
+              class={`px-2 py-1 rounded-xl text-[11px] font-black whitespace-nowrap transition cursor-pointer ${
+                activeHotspotCategory === 'commuter'
+                  ? 'bg-[#7C3AED] text-white shadow-xs'
+                  : (isDarkMode ? 'bg-[#271A10] text-[#FAF7F2]' : 'bg-white text-[#4A2E1B]')
+              }`}
+            >
+              🚌
+            </button>
+          </div>
+
+          <button
+            type="button"
+            on:click={() => (showHotspotConfigModal = true)}
+            class="px-2 py-1 rounded-xl text-[11px] font-black bg-[#D97706]/15 hover:bg-[#D97706]/25 text-[#D97706] shrink-0 cursor-pointer"
+            title="Magdagdag ng Event"
+          >
+            ➕ {language === 'tl' ? 'Mag-ulat' : 'Add'}
+          </button>
+        </div>
+
+        <!-- Hotspots List -->
+        <div class="flex-1 overflow-y-auto p-3 space-y-2.5">
+          {#if listHotspots.length === 0}
+            <div class="p-8 text-center text-xs opacity-60">
+              {language === 'tl' ? 'Walang nahanap na hotspot sa kategoryang ito.' : 'No hotspots in this category.'}
+            </div>
+          {:else}
+            {#each listHotspots as hotspot}
+              {@const lvl = HOTSPOT_LEVEL_META[hotspot.potentialLevel]}
+              {@const cat = HOTSPOT_CATEGORY_META[hotspot.category]}
+              <div
+                role="button"
+                tabindex="0"
+                on:click={() => {
+                  selectedHotspot = hotspot;
+                  selectedVendor = null;
+                  map?.flyTo([hotspot.lat, hotspot.lng], 16, { duration: 0.5 });
+                  if (typeof window !== 'undefined' && window.innerWidth < 640) {
+                    isVendorListOpen = false;
+                  }
+                }}
+                on:keydown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    selectedHotspot = hotspot;
+                    selectedVendor = null;
+                    map?.flyTo([hotspot.lat, hotspot.lng], 16, { duration: 0.5 });
+                  }
+                }}
+                class={`p-3 rounded-2xl cursor-pointer transition-all flex items-start gap-3 shadow-xs active:scale-98 ${
+                  selectedHotspot?.id === hotspot.id
+                    ? (isDarkMode ? 'bg-[#452B14] ring-2 ring-[#EF4444]' : 'bg-[#FEE2E2] ring-2 ring-[#DC2626]')
+                    : (isDarkMode ? 'bg-[#271A10] hover:bg-[#352317]' : 'bg-[#FAF7F2] hover:bg-[#F3EDE2]')
+                }`}
+              >
+                <!-- Category Icon with Potential Badge -->
+                <div
+                  class="w-12 h-12 rounded-xl flex items-center justify-center text-xl shrink-0 border relative"
+                  style={`background-color: ${lvl.badgeBg}; border-color: ${lvl.mapStroke};`}
+                >
+                  <span>{cat.icon}</span>
+                  <span class="absolute -top-1 -right-1 text-[10px]">{lvl.iconEmoji}</span>
+                </div>
+
+                <!-- Hotspot Details -->
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center justify-between gap-1">
+                    <h4 class="font-black text-xs sm:text-sm truncate">{hotspot.name}</h4>
+                    <span
+                      class="text-[10px] font-black px-1.5 py-0.2 rounded-full shrink-0 text-white"
+                      style={`background-color: ${lvl.mapFill};`}
+                    >
+                      {hotspot.opportunityScore}/100
+                    </span>
+                  </div>
+
+                  <p class={`text-[11px] font-bold mt-0.5 truncate text-[#D97706]`}>
+                    🕒 {hotspot.expectedBusyTime}
+                  </p>
+
+                  <p class={`text-[10px] line-clamp-1 mt-1 ${isDarkMode ? 'text-[#D6C7B2]' : 'text-[#796658]'}`}>
+                    {language === 'tl' ? hotspot.explanationTl : hotspot.explanationEn}
+                  </p>
+
+                  <div class="flex items-center justify-between mt-1.5 pt-1 border-t border-black/5 dark:border-white/5 text-[9px]">
+                    <span class="font-bold text-[#D97706]">
+                      👥 {hotspot.estimatedCrowd}
+                    </span>
+                    <span class="opacity-60 truncate">
+                      {hotspot.dataSourceLabel.split('(')[0]}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            {/each}
+          {/if}
+        </div>
+      {/if}
     </aside>
   {:else}
     <!-- Floating Toggle Button when Sidebar is Minimized -->
@@ -599,6 +994,20 @@
         <span>🔔</span>
         <span>{language === 'tl' ? 'Ihanda na ang barya at lagayan!' : 'Notify Me (Prepare Coins & Bowl)'}</span>
       </button>
+    </div>
+  {/if}
+
+  <!-- DEMAND HOTSPOT BOTTOM CARD (WHEN A HOTSPOT PIN OR CATCHMENT ZONE IS CLICKED) -->
+  {#if selectedHotspot && !isSidebarOpen}
+    <div class="absolute bottom-4 inset-x-3 sm:inset-x-auto sm:left-6 sm:w-96 z-30 pointer-events-auto">
+      <HotspotDetailCard
+        hotspot={selectedHotspot}
+        {language}
+        {isDarkMode}
+        {session}
+        onClose={() => (selectedHotspot = null)}
+        onTargetLocation={handleTargetLocation}
+      />
     </div>
   {/if}
 
@@ -854,4 +1263,19 @@
       🎯
     </button>
   </div>
+
+  <!-- CONFIGURATION MODAL (SCHOOL SCHEDULES & COMMUNITY EVENTS) -->
+  {#if showHotspotConfigModal}
+    <HotspotConfigModal
+      {language}
+      {isDarkMode}
+      {session}
+      activeHotspots={demandHotspots}
+      onClose={() => (showHotspotConfigModal = false)}
+      onHotspotsUpdated={() => {
+        reloadHotspots();
+        renderMapElements();
+      }}
+    />
+  {/if}
 </div>

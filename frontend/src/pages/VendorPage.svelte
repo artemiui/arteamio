@@ -1,8 +1,10 @@
 <script lang="ts">
-  import type { Language, ProductType, UserSession, BusinessArchetype } from '../lib/types';
+  import type { Language, ProductType, UserSession, BusinessArchetype, DemandHotspot } from '../lib/types';
   import Logo from '../lib/components/Logo.svelte';
   import { BUSINESS_ARCHETYPES, generateAnchorsAround, generateCompetitorsAround } from '../lib/data/spots';
+  import { getAllDemandHotspots, HOTSPOT_CATEGORY_META, HOTSPOT_LEVEL_META } from '../lib/data/hotspots';
   import { evaluateLocationViability } from '../lib/gravity';
+  import HotspotConfigModal from '../lib/components/HotspotConfigModal.svelte';
 
   export let language: Language = 'tl';
   export let isDarkMode: boolean = false;
@@ -15,6 +17,12 @@
   let audienceCount: number = 22;
   let activeProduct: string = session.product || 'Taho';
   let uploadedPhoto: string | null = session.verifiedPhoto || null;
+  let showConfigModal: boolean = false;
+  let hotspots: DemandHotspot[] = getAllDemandHotspots(session.lat, session.lng);
+
+  function reloadHotspots() {
+    hotspots = getAllDemandHotspots(session.lat, session.lng);
+  }
 
   // Huff Gravity Model Viability Evaluation
   let anchors = generateAnchorsAround(session.lat, session.lng);
@@ -249,6 +257,98 @@
       </div>
     </div>
 
+    <!-- Demand Hotspots Intel Section for Vendors -->
+    <div class={`p-5 sm:p-6 rounded-[28px] shadow-sm space-y-4 ${
+      isDarkMode ? 'bg-[#271A10]' : 'bg-white'
+    }`}>
+      <div class="flex items-center justify-between flex-wrap gap-2">
+        <div>
+          <span class="text-[11px] font-black uppercase tracking-wider text-[#EF4444]">
+            🔥 {language === 'tl' ? 'Mataas na Bentahan' : 'High-Demand Selling Areas'}
+          </span>
+          <h2 class="text-base font-black">
+            {language === 'tl' ? 'Mga Potensyal na Pwesto Ngayon' : 'Upcoming High-Demand Hotspots'}
+          </h2>
+          <p class={`text-[11px] font-medium mt-0.5 ${isDarkMode ? 'text-[#D6C7B2]' : 'text-[#796658]'}`}>
+            {language === 'tl'
+              ? 'Batay sa uwian ng estudyante, palaro sa court, barangay events, at rush hour.'
+              : 'Based on school dismissals, basketball tournaments, civic events, and commuter queues.'}
+          </p>
+        </div>
+
+        <button
+          type="button"
+          on:click={() => (showConfigModal = true)}
+          class="px-3 py-1.5 rounded-full text-xs font-black bg-[#D97706]/15 text-[#D97706] hover:bg-[#D97706]/25 transition cursor-pointer flex items-center gap-1 active:scale-95"
+        >
+          <span>➕</span>
+          <span>{language === 'tl' ? 'Mag-ulat ng Event' : 'Add Event / Schedule'}</span>
+        </button>
+      </div>
+
+      <div class="space-y-2.5">
+        {#each hotspots.slice(0, 3) as h}
+          {@const lvl = HOTSPOT_LEVEL_META[h.potentialLevel]}
+          {@const cat = HOTSPOT_CATEGORY_META[h.category]}
+          <div class={`p-3.5 rounded-2xl border flex items-start gap-3 transition ${
+            isDarkMode ? 'bg-[#1A120B] border-[#3D2717]' : 'bg-[#FAF7F2] border-[#EAE4D9]'
+          }`}>
+            <div
+              class="w-11 h-11 rounded-xl flex items-center justify-center text-xl shrink-0 border relative"
+              style={`background-color: ${lvl.badgeBg}; border-color: ${lvl.mapStroke};`}
+            >
+              <span>{cat.icon}</span>
+              <span class="absolute -top-1 -right-1 text-[10px]">{lvl.iconEmoji}</span>
+            </div>
+
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center justify-between gap-1">
+                <h4 class="font-black text-xs sm:text-sm truncate">{h.name}</h4>
+                <span
+                  class="text-[10px] font-black px-2 py-0.5 rounded-full text-white shrink-0"
+                  style={`background-color: ${lvl.mapFill};`}
+                >
+                  {h.opportunityScore}/100
+                </span>
+              </div>
+
+              <p class="text-[11px] font-bold text-[#D97706] mt-0.5">
+                🕒 {h.expectedBusyTime}
+              </p>
+
+              <p class={`text-[11px] font-medium line-clamp-2 mt-1 leading-snug ${isDarkMode ? 'text-[#D6C7B2]' : 'text-[#5C4D40]'}`}>
+                💡 {language === 'tl' ? h.explanationTl : h.explanationEn}
+              </p>
+
+              <div class="flex items-center justify-between mt-2 pt-1 border-t border-black/5 dark:border-white/5 text-[10px]">
+                <span class="font-bold text-[#D97706]">
+                  👥 {h.estimatedCrowd}
+                </span>
+                <span class="opacity-60 truncate">
+                  📌 {h.dataSourceLabel.split('(')[0]}
+                </span>
+              </div>
+            </div>
+          </div>
+        {/each}
+      </div>
+
+      <!-- Quick Action to view on Map -->
+      <button
+        type="button"
+        on:click={() => onNavigate('map')}
+        class={`w-full py-2.5 rounded-xl text-xs font-black border transition flex items-center justify-center gap-1.5 cursor-pointer ${
+          isDarkMode
+            ? 'bg-[#352317] border-[#3D2717] text-[#FAF7F2] hover:bg-[#4A2E1B]'
+            : 'bg-white border-[#EAE4D9] text-[#4A2E1B] hover:bg-[#FAF7F2]'
+        }`}
+      >
+        <span>🗺️</span>
+        <span>{language === 'tl' ? 'Tingnan ang Lahat ng Hotspots sa Mapa' : 'View All Hotspots on Map'}</span>
+        <span>→</span>
+      </button>
+    </div>
+
     <!-- Photo Verification Card -->
     <div class={`p-5 rounded-[28px] shadow-sm space-y-3 ${
       isDarkMode ? 'bg-[#271A10] border-[#3D2717]' : 'bg-white border-[#EAE4D9]'
@@ -307,4 +407,15 @@
       <span>→</span>
     </button>
   </div>
+
+  {#if showConfigModal}
+    <HotspotConfigModal
+      {language}
+      {isDarkMode}
+      {session}
+      activeHotspots={hotspots}
+      onClose={() => (showConfigModal = false)}
+      onHotspotsUpdated={reloadHotspots}
+    />
+  {/if}
 </div>

@@ -6,6 +6,7 @@
   export let vendors: TaggedVendor[];
   export let language: Language = 'tl';
   export let isDarkMode: boolean = false;
+  export let onToggleDarkMode: (() => void) | undefined = undefined;
   export let onSwitchRole: () => void;
   export let onResetSession: () => void;
   export let onNavigate: (route: string) => void;
@@ -16,6 +17,7 @@
   {vendors}
   {language}
   {isDarkMode}
+  {onToggleDarkMode}
   {onSwitchRole}
   {onResetSession}
   onNavigateToLanding={() => onNavigate('landing')}

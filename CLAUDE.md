@@ -140,3 +140,8 @@ Where:
 - [x] Strict role isolation: Buyer mode never sees vendor dashboard or vendor controls.
 - [x] Deliberate mode swapping: Guarded by confirmation modal (`RoleSwitchModal`) requiring onboarding verification when switching to vendor.
 - [x] Active Huff Gravity Model viability evaluation in Vendor Console (*"Saan Pepwesto?"*).
+- [x] Hyperlocal Demand Hotspots radar highlighting selling opportunities from student dismissal times, barangay events, basketball tournaments, and commuter rush windows.
+- [x] Color-coded hotspot potential zones (🔴 Red: High >= 80, 🟠 Orange: Medium 50-79, 🟡 Yellow: Low < 50).
+- [x] Vendor & Buyer hotspot cards displaying location, expected busy hours, opportunity scores, and customer demand rationale.
+- [x] Community Event submission and School Dismissal configuration modal (`HotspotConfigModal`) with persistent `localStorage` support.
+- [x] Strict data truthfulness: Real landmarks, explicit `[Tantiyang Datos / Estimated Demand]` tags, and no fabricated foot-traffic surveillance.

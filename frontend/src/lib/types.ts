@@ -96,3 +96,56 @@ export interface ViabilityResult {
   peakHoursTl: string;
   peakHoursEn: string;
 }
+
+export type DemandHotspotCategory = 'school' | 'barangay' | 'basketball' | 'commuter';
+
+export type DemandPotentialLevel = 'high' | 'medium' | 'low';
+
+export interface DemandHotspot {
+  id: string;
+  name: string;
+  nameTl: string;
+  category: DemandHotspotCategory;
+  lat: number;
+  lng: number;
+  radiusM: number;
+  opportunityScore: number; // 0-100
+  potentialLevel: DemandPotentialLevel; // 'high' (80-100), 'medium' (50-79), 'low' (20-49)
+  expectedBusyTime: string;
+  expectedBusyTimeTl: string;
+  daysActive?: string;
+  explanationTl: string;
+  explanationEn: string;
+  estimatedCrowd: string; // Clearly labeled as estimated demand
+  isUserAdded?: boolean;
+  isSchoolSchedule?: boolean;
+  schoolGrades?: string;
+  dataSourceLabel: string; // e.g. "Tantiyang Iskedyul / Configured Schedule"
+  createdAt?: string;
+}
+
+export interface SchoolDismissalConfig {
+  schoolName: string;
+  gateLocation: string;
+  lat: number;
+  lng: number;
+  primaryDismissalTime: string; // e.g. "15:30"
+  secondaryDismissalTime?: string; // e.g. "17:00"
+  estimatedStudents: number;
+  favoriteMeriendaTl: string;
+  favoriteMeriendaEn: string;
+}
+
+export interface CommunityEventConfig {
+  title: string;
+  category: DemandHotspotCategory;
+  venueName: string;
+  lat: number;
+  lng: number;
+  startTime: string; // e.g. "17:30"
+  endTime: string; // e.g. "21:30"
+  scheduleDays: string; // e.g. "Biyernes at Sabado"
+  estimatedAttendees: number;
+  demandExplanationTl: string;
+  demandExplanationEn: string;
+}
