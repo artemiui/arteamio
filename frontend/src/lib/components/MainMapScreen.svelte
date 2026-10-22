@@ -555,10 +555,11 @@
               : (isDarkMode ? 'bg-[#271A10] text-[#D6C7B2]' : 'bg-[#FAF7F2] text-[#796658]')
           }`}
         >
-          <span class="inline-flex items-center gap-1">
-            <Icon name={session.role === 'vendor' ? 'cart' : 'bowl'} size={12} />
-            {session.role === 'vendor' ? 'Tindero' : 'Mamimili'}
-          </span>
+          {#if session.role === 'vendor'}
+              <img src="/assets/maninindamode.svg" class="h-full max-h-8 w-auto" alt="Vendor mode" />
+            {:else}
+              <img src="/assets/mamimilimode.svg" class="h-full max-h-8 w-auto" alt="Buyer mode" />
+            {/if}
         </div>
 
         <!-- Settings Button (Hosts Theme, Language, Audio, and Role Switch) -->
@@ -603,7 +604,7 @@
 
   <!-- FLOATING DEMAND HOTSPOT FILTER BAR (WITH TEXTLESS HOTSPOTS TOGGLE NEXT TO MAG ULAT) -->
   <div
-    class={`absolute top-18 sm:top-22 inset-x-3 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 z-20 flex items-center justify-center gap-1.5 p-1.5 rounded-2xl backdrop-blur-md shadow-lg border overflow-x-auto no-scrollbar max-w-[95vw] pointer-events-auto transition-colors animate-fade-in ${
+    class={`absolute bottom-20 left-3 sm:bottom-auto sm:top-22 sm:left-1/2 sm:-translate-x-1/2 sm:inset-x-auto z-20 flex flex-col sm:flex-row items-start sm:items-center justify-start sm:justify-center gap-1.5 p-1.5 rounded-2xl backdrop-blur-md shadow-lg border overflow-y-auto sm:overflow-y-visible overflow-x-hidden sm:overflow-x-auto no-scrollbar max-h-[60vh] sm:max-h-none sm:max-w-[95vw] pointer-events-auto transition-colors animate-fade-in ${
       isDarkMode ? 'bg-[#1A120B]/95 border-[#3D2717] text-[#FAF7F2]' : 'bg-white/95 border-[#EAE4D9] text-[#4A2E1B]'
     }`}
   >
@@ -671,7 +672,7 @@
         <span class="hidden xs:inline">{language === 'tl' ? 'Sakayan' : 'Commuters'}</span>
       </button>
 
-      <div class="w-[1px] h-4 bg-black/10 dark:bg-white/10 mx-0.5"></div>
+      <div class="w-full sm:w-[1px] h-[1px] sm:h-4 bg-black/10 dark:bg-white/10 my-0.5 sm:my-0 sm:mx-0.5"></div>
 
       <button
         type="button"
@@ -988,7 +989,7 @@
             class="px-2 py-1 rounded-xl text-[11px] font-black bg-[#D97706]/15 hover:bg-[#D97706]/25 text-[#D97706] shrink-0 cursor-pointer active:scale-95"
             title="Magdagdag ng Event"
           >
-            <span class="inline-flex items-center gap-1"><Icon name="plus" size={12} /><span>{language === 'tl' ? 'Mag-ulat' : 'Add'}</span></span>
+            <span class="inline-flex items-center"><Icon name="plus" size={12} /><span>{language === 'tl' ? 'Mag-ulat' : 'Add'}</span></span>
           </button>
 
           <!-- Hotspots Toggle Switch in Sidebar next to Mag Ulat -->
