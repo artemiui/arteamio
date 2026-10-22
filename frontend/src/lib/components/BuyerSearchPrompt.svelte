@@ -90,13 +90,14 @@
   }
 
   const POPULAR_LOCATIONS = [
-    { name: 'Araneta / Cubao', lat: 14.6200, lng: 121.0530 },
-    { name: 'España / Sampaloc', lat: 14.6091, lng: 120.9898 },
-    { name: 'Ayala, Makati', lat: 14.5547, lng: 121.0244 },
-    { name: 'BGC, Taguig', lat: 14.5490, lng: 121.0495 },
-    { name: 'Taft Ave, Manila', lat: 14.5700, lng: 120.9920 },
-    { name: 'Cebu IT Park', lat: 10.3283, lng: 123.9061 },
-    { name: 'Roxas, Davao', lat: 7.0673, lng: 125.6083 },
+    { name: 'Welcome Rotonda', lat: 14.6177, lng: 121.0006 },
+    { name: 'PHILCOA, QC', lat: 14.6518, lng: 121.0493 },
+    { name: 'Quezon Ave (MRT-3)', lat: 14.6425, lng: 121.0387 },
+    { name: 'Cubao (LRT-2 / MRT-3)', lat: 14.6200, lng: 121.0530 },
+    { name: 'Monumento (LRT-1)', lat: 14.6548, lng: 120.9839 },
+    { name: 'LRT-1 D. Jose / Recto', lat: 14.6054, lng: 120.9822 },
+    { name: 'LRT-1 Baclaran / Taft', lat: 14.5343, lng: 120.9983 },
+    { name: 'España / UST', lat: 14.6091, lng: 120.9898 },
   ];
 
   function selectShortcut(spot: { name: string; lat: number; lng: number }) {

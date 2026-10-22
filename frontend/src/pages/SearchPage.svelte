@@ -139,8 +139,8 @@
       </h1>
       <p class={`text-xs sm:text-sm mt-1 font-medium ${isDarkMode ? 'text-[#D6C7B2]' : 'text-[#796658]'}`}>
         {language === 'tl'
-          ? 'Maghanap ng kahit anong lugar sa Pilipinas (hal. UP Diliman, UST, Luneta) gamit ang OpenStreetMap.'
-          : 'Search any place in the Philippines (e.g. UP Diliman, UST, Luneta) via OpenStreetMap.'}
+          ? 'Maghanap ng kahit anong lugar sa Pilipinas gamit ang OpenStreetMap, o pumili sa mga karaniwang sakayan sa ibaba.'
+          : 'Search any place in the Philippines via OpenStreetMap, or pick from the common commuter presets below.'}
       </p>
     </div>
 
@@ -241,12 +241,12 @@
       </div>
     </div>
 
-    <!-- Major Hubs List (without icons) -->
+    <!-- Common Commuter Presets List (without icons) -->
     <div class={`p-5 rounded-[28px] border space-y-3 ${
       isDarkMode ? 'bg-[#271A10] border-[#3D2717]' : 'bg-white border-[#EAE4D9]'
     }`}>
       <h2 class="text-xs font-bold uppercase tracking-wider text-[#796658]">
-        {language === 'tl' ? 'Mga Kilalang Hub sa Pilipinas:' : 'Major Philippine Hubs:'}
+        {language === 'tl' ? 'Mga Karaniwang Sakayan at Hub (Presets):' : 'Common Commuter Hubs (Presets):'}
       </h2>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
         {#each PHILIPPINE_METRO_HUBS as hub}

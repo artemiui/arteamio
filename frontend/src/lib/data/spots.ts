@@ -9,14 +9,14 @@ export interface MetroHubPreset {
 }
 
 export const PHILIPPINE_METRO_HUBS: MetroHubPreset[] = [
-  { id: 'manila-espana', name: 'España / Sampaloc', region: 'Manila', lat: 14.6091, lng: 120.9898 },
-  { id: 'qc-cubao', name: 'Araneta City / Cubao', region: 'Quezon City', lat: 14.6200, lng: 121.0530 },
-  { id: 'makati-ayala', name: 'Ayala / Poblacion', region: 'Makati', lat: 14.5547, lng: 121.0244 },
-  { id: 'taguig-bgc', name: 'Bonifacio Global City', region: 'Taguig', lat: 14.5490, lng: 121.0495 },
-  { id: 'pasig-ortigas', name: 'Ortigas Center', region: 'Pasig / Mandaluyong', lat: 14.5866, lng: 121.0610 },
-  { id: 'caloocan-monumento', name: 'Monumento Circle', region: 'Caloocan', lat: 14.6575, lng: 120.9836 },
-  { id: 'cebu-itpark', name: 'Cebu IT Park / Colon', region: 'Cebu City', lat: 10.3283, lng: 123.9061 },
-  { id: 'davao-roxas', name: 'Roxas Night Market', region: 'Davao City', lat: 7.0673, lng: 125.6083 },
+  { id: 'manila-espana', name: 'España / UST & Sampaloc', region: 'Manila', lat: 14.6091, lng: 120.9898 },
+  { id: 'qc-welcome', name: 'Welcome Rotonda', region: 'Quezon City / Manila', lat: 14.6177, lng: 121.0006 },
+  { id: 'qc-philcoa', name: 'PHILCOA / Commonwealth', region: 'Quezon City', lat: 14.6518, lng: 121.0493 },
+  { id: 'qc-quezon-ave', name: 'Quezon Avenue (MRT-3 / Centris)', region: 'Quezon City', lat: 14.6425, lng: 121.0387 },
+  { id: 'qc-cubao', name: 'Cubao (LRT-2 / MRT-3 Araneta)', region: 'Quezon City', lat: 14.6200, lng: 121.0530 },
+  { id: 'caloocan-monumento', name: 'Monumento (LRT-1 Station)', region: 'Caloocan', lat: 14.6548, lng: 120.9839 },
+  { id: 'manila-recto', name: 'LRT-1 Doroteo Jose / LRT-2 Recto', region: 'Manila', lat: 14.6054, lng: 120.9822 },
+  { id: 'pasay-baclaran', name: 'LRT-1 Baclaran / EDSA Taft', region: 'Pasay / Parañaque', lat: 14.5343, lng: 120.9983 },
 ];
 
 export const BUSINESS_ARCHETYPES: BusinessArchetype[] = [
@@ -203,31 +203,31 @@ export function generateAnchorsAround(centerLat: number, centerLng: number): Tra
         { id: 'anchor-jeep-1', name: 'MRT-3 Cubao & Aurora Blvd Jeepney Bay', type: 'jeepney', lat: hLat + 0.0007, lng: hLng - 0.0008, weight: 1.0 },
         { id: 'anchor-trike-1', name: 'Farmer’s Plaza Tricycle TODA', type: 'tricycle', lat: hLat - 0.0008, lng: hLng - 0.0006, weight: 0.85 },
         { id: 'anchor-bridge-1', name: 'EDSA-Cubao Commuter Footbridge', type: 'school', lat: hLat + 0.0012, lng: hLng + 0.0005, weight: 0.95 },
-        { id: 'anchor-train-1', name: 'Gateway Bus & Transit Terminal', type: 'train', lat: hLat - 0.0013, lng: hLng + 0.0009, weight: 1.2 },
+        { id: 'anchor-train-1', name: 'LRT-2 Gateway & Bus Terminal', type: 'train', lat: hLat - 0.0013, lng: hLng + 0.0009, weight: 1.2 },
       ];
     }
-    if (nearestHub.id === 'makati-ayala') {
+    if (nearestHub.id === 'qc-welcome') {
       return [
-        { id: 'anchor-jeep-1', name: 'One Ayala & MRT-3 UV Express Bay', type: 'jeepney', lat: hLat + 0.0006, lng: hLng + 0.0005, weight: 1.0 },
-        { id: 'anchor-trike-1', name: 'Poblacion Tricycle TODA Terminal', type: 'tricycle', lat: hLat - 0.0008, lng: hLng - 0.0005, weight: 0.85 },
-        { id: 'anchor-bridge-1', name: 'Paseo de Roxas Commuter Overpass', type: 'school', lat: hLat + 0.0011, lng: hLng - 0.0004, weight: 0.95 },
-        { id: 'anchor-train-1', name: 'Buendia Bus & Jeepney Interchange', type: 'train', lat: hLat - 0.0014, lng: hLng + 0.0008, weight: 1.2 },
+        { id: 'anchor-jeep-1', name: 'Welcome Rotonda Quezon Ave Jeepney & UV Bay', type: 'jeepney', lat: hLat + 0.0006, lng: hLng + 0.0005, weight: 1.05 },
+        { id: 'anchor-trike-1', name: 'Kanlaon & Mayon Tricycle TODA Terminal', type: 'tricycle', lat: hLat - 0.0008, lng: hLng - 0.0005, weight: 0.85 },
+        { id: 'anchor-bridge-1', name: 'Welcome Rotonda Pedestrian Overpass', type: 'school', lat: hLat + 0.0011, lng: hLng - 0.0004, weight: 0.95 },
+        { id: 'anchor-train-1', name: 'E. Rodriguez Sr. Ave Transit Loading Hub', type: 'train', lat: hLat - 0.0013, lng: hLng + 0.0008, weight: 1.15 },
       ];
     }
-    if (nearestHub.id === 'taguig-bgc') {
+    if (nearestHub.id === 'qc-philcoa') {
       return [
-        { id: 'anchor-jeep-1', name: 'Market! Market! Central Jeepney Bay', type: 'jeepney', lat: hLat + 0.0008, lng: hLng + 0.0006, weight: 1.0 },
-        { id: 'anchor-trike-1', name: 'Kalayaan Ave Tricycle Terminal', type: 'tricycle', lat: hLat - 0.0007, lng: hLng - 0.0006, weight: 0.85 },
-        { id: 'anchor-bridge-1', name: '32nd St. Pedestrian Crosswalk Hub', type: 'school', lat: hLat + 0.0012, lng: hLng - 0.0003, weight: 0.95 },
-        { id: 'anchor-train-1', name: 'BGC Bus Central Depot', type: 'train', lat: hLat - 0.0013, lng: hLng + 0.0010, weight: 1.2 },
+        { id: 'anchor-jeep-1', name: 'PHILCOA Commonwealth Jeepney & UV Express Bay', type: 'jeepney', lat: hLat + 0.0007, lng: hLng + 0.0006, weight: 1.1 },
+        { id: 'anchor-trike-1', name: 'Krus na Ligas & Masaya St. Tricycle TODA', type: 'tricycle', lat: hLat - 0.0007, lng: hLng - 0.0006, weight: 0.9 },
+        { id: 'anchor-bridge-1', name: 'PHILCOA Pedestrian Footbridge & UP Jeep Gate', type: 'school', lat: hLat + 0.0011, lng: hLng - 0.0003, weight: 1.0 },
+        { id: 'anchor-train-1', name: 'Elliptical Road & Housing Authority Bus Stop', type: 'train', lat: hLat - 0.0013, lng: hLng + 0.0009, weight: 1.15 },
       ];
     }
-    if (nearestHub.id === 'pasig-ortigas') {
+    if (nearestHub.id === 'qc-quezon-ave') {
       return [
-        { id: 'anchor-jeep-1', name: 'MRT-3 Ortigas & Megamall Terminal', type: 'jeepney', lat: hLat + 0.0007, lng: hLng - 0.0007, weight: 1.0 },
-        { id: 'anchor-trike-1', name: 'San Antonio TODA Terminal', type: 'tricycle', lat: hLat - 0.0008, lng: hLng + 0.0006, weight: 0.85 },
-        { id: 'anchor-bridge-1', name: 'Ortigas MRT Footbridge', type: 'school', lat: hLat + 0.0011, lng: hLng + 0.0004, weight: 0.95 },
-        { id: 'anchor-train-1', name: 'Meralco Ave UV Express Gate', type: 'train', lat: hLat - 0.0014, lng: hLng - 0.0008, weight: 1.2 },
+        { id: 'anchor-jeep-1', name: 'Quezon Ave EDSA Jeepney & UV Loading Bay', type: 'jeepney', lat: hLat + 0.0007, lng: hLng - 0.0007, weight: 1.0 },
+        { id: 'anchor-trike-1', name: 'Panay Ave & South Triangle TODA Terminal', type: 'tricycle', lat: hLat - 0.0008, lng: hLng + 0.0006, weight: 0.85 },
+        { id: 'anchor-bridge-1', name: 'MRT-3 Quezon Ave & Eton Centris Walkbridge', type: 'school', lat: hLat + 0.0011, lng: hLng + 0.0004, weight: 0.95 },
+        { id: 'anchor-train-1', name: 'MRT-3 Quezon Avenue Station & Bus Carousel', type: 'train', lat: hLat - 0.0013, lng: hLng - 0.0008, weight: 1.2 },
       ];
     }
     if (nearestHub.id === 'caloocan-monumento') {
@@ -235,23 +235,23 @@ export function generateAnchorsAround(centerLat: number, centerLng: number): Tra
         { id: 'anchor-jeep-1', name: 'Monumento LRT-1 & MCU Bus Bay', type: 'jeepney', lat: hLat + 0.0007, lng: hLng + 0.0004, weight: 1.0 },
         { id: 'anchor-trike-1', name: 'Samson Road TODA Terminal', type: 'tricycle', lat: hLat - 0.0008, lng: hLng - 0.0006, weight: 0.85 },
         { id: 'anchor-bridge-1', name: 'Monumento Pedestrian Footbridge', type: 'school', lat: hLat + 0.0012, lng: hLng - 0.0003, weight: 0.95 },
-        { id: 'anchor-train-1', name: '10th Ave Jeepney Terminal', type: 'train', lat: hLat - 0.0013, lng: hLng + 0.0008, weight: 1.2 },
+        { id: 'anchor-train-1', name: 'LRT-1 Monumento Station & Rizal Ave Hub', type: 'train', lat: hLat - 0.0013, lng: hLng + 0.0008, weight: 1.2 },
       ];
     }
-    if (nearestHub.id === 'cebu-itpark') {
+    if (nearestHub.id === 'manila-recto') {
       return [
-        { id: 'anchor-jeep-1', name: 'Colon Metro Cebu Jeepney Hub', type: 'jeepney', lat: hLat + 0.0007, lng: hLng + 0.0005, weight: 1.0 },
-        { id: 'anchor-trike-1', name: 'Pelaez St. Tricycle Terminal', type: 'tricycle', lat: hLat - 0.0008, lng: hLng - 0.0006, weight: 0.85 },
-        { id: 'anchor-bridge-1', name: 'Downtown Pedestrian Footbridge', type: 'school', lat: hLat + 0.0012, lng: hLng - 0.0004, weight: 0.95 },
-        { id: 'anchor-train-1', name: 'Cebu IT Park Transport Terminal', type: 'train', lat: hLat - 0.0014, lng: hLng + 0.0009, weight: 1.2 },
+        { id: 'anchor-jeep-1', name: 'Recto Ave & Morayta Jeepney Loading Bay', type: 'jeepney', lat: hLat + 0.0007, lng: hLng + 0.0005, weight: 1.05 },
+        { id: 'anchor-trike-1', name: 'Oroquieta & Felix Huertas Tricycle TODA', type: 'tricycle', lat: hLat - 0.0008, lng: hLng - 0.0006, weight: 0.85 },
+        { id: 'anchor-bridge-1', name: 'LRT-1 Doroteo Jose – LRT-2 Recto Connecting Bridge', type: 'school', lat: hLat + 0.0011, lng: hLng - 0.0004, weight: 1.1 },
+        { id: 'anchor-train-1', name: 'LRT-1 Doroteo Jose & Avenida Bus Terminal', type: 'train', lat: hLat - 0.0013, lng: hLng + 0.0009, weight: 1.2 },
       ];
     }
-    if (nearestHub.id === 'davao-roxas') {
+    if (nearestHub.id === 'pasay-baclaran') {
       return [
-        { id: 'anchor-jeep-1', name: 'Roxas Night Market Jeepney Bay', type: 'jeepney', lat: hLat + 0.0007, lng: hLng + 0.0005, weight: 1.0 },
-        { id: 'anchor-trike-1', name: 'Claveria Tricycle & Multicab Terminal', type: 'tricycle', lat: hLat - 0.0008, lng: hLng - 0.0006, weight: 0.85 },
-        { id: 'anchor-bridge-1', name: 'Ateneo Overpass & Walkway', type: 'school', lat: hLat + 0.0012, lng: hLng - 0.0004, weight: 0.95 },
-        { id: 'anchor-train-1', name: 'Recto Ave Transit Node', type: 'train', lat: hLat - 0.0014, lng: hLng + 0.0009, weight: 1.2 },
+        { id: 'anchor-jeep-1', name: 'Baclaran Redemptorist & Heritage Jeepney Bay', type: 'jeepney', lat: hLat + 0.0007, lng: hLng + 0.0005, weight: 1.05 },
+        { id: 'anchor-trike-1', name: 'Tambo & Quirino Ave Tricycle TODA', type: 'tricycle', lat: hLat - 0.0008, lng: hLng - 0.0006, weight: 0.85 },
+        { id: 'anchor-bridge-1', name: 'EDSA-Taft Rotonda Pedestrian Overpass', type: 'school', lat: hLat + 0.0012, lng: hLng - 0.0004, weight: 1.0 },
+        { id: 'anchor-train-1', name: 'LRT-1 Baclaran & MRT-3 Taft Station Concourse', type: 'train', lat: hLat - 0.0014, lng: hLng + 0.0009, weight: 1.25 },
       ];
     }
     if (nearestHub.id === 'manila-espana') {
