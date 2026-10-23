@@ -1,25 +1,46 @@
 import L from 'leaflet';
-import type { CompetitorNode, TaggedVendor, TransitAnchor } from './types';
-import {
-  generateWideScopeAnchors,
-  getProductAnchorAffinity,
-} from './gravity';
-import { BUSINESS_ARCHETYPES, generateCompetitorsAround } from './data/spots';
+import type { CompetitorNode, DemandHotspot, TaggedVendor, TransitAnchor } from './types';
+import { getProductAnchorAffinity } from './gravity';
+import { generateCompetitorsAround } from './data/spots';
+import { getDemandHotspotsForViewport } from './data/hotspots';
 
 /**
- * Subtle, translucent 256-level RGBA Thermal LUT so underlying OpenStreetMap
- * roads, building outlines, and labels remain 100% sharp and legible,
- * while showing a rich spread of High (Red), Medium (Amber), and Light (Yellow) zones.
+ * Coastline & water mask for Manila Bay and major water bodies.
+ * Ensures zero heatmap pixels ever bleed into the sea even near coastal districts.
  */
-function buildSubtleThermalLUT(isDarkMode: boolean): Uint8ClampedArray {
+function isPointInManilaBayOrWater(lat: number, lng: number): boolean {
+  if (lat >= 14.66 && lng < 120.952) return true;
+  if (lat >= 14.60 && lat < 14.66) {
+    const t = (14.66 - lat) / 0.06;
+    const coastLng = 120.950 + t * 0.015;
+    if (lng < coastLng) return true;
+  }
+  if (lat >= 14.582 && lat < 14.60) {
+    if (lng < 120.975) return true;
+  }
+  if (lat >= 14.50 && lat < 14.582) {
+    const t = (14.582 - lat) / 0.082;
+    const coastLng = 120.978 + t * 0.012;
+    if (lng < coastLng) return true;
+  }
+  return false;
+}
+
+/**
+ * Inverted Green Viability LUT (per Team Leader spec):
+ * - Bad / dead spots ("engot spot pangit magtinda"): 0 opacity (completely transparent)
+ * - Gradually transitions from 0 opacity -> soft light green -> mild transparent rich green
+ *   at the best spots ("yung dark lang yung maganda"), keeping map streets 100% legible underneath.
+ */
+function buildGreenViabilityLUT(isDarkMode: boolean): Uint8ClampedArray {
   const lut = new Uint8ClampedArray(256 * 4);
-  // Subtle max alpha: 36% in light mode, 44% in dark mode so map outlines always show through clearly
-  const maxAlpha = isDarkMode ? 112 : 92;
+  // Mild transparent max alpha (~42% in light mode, ~48% in dark mode) so map outlines stay crisp
+  const maxAlpha = isDarkMode ? 122 : 108;
 
   for (let i = 0; i < 256; i++) {
     const idx = i * 4;
-    // Below threshold: transparent so empty streets/water stay clean
-    if (i < 24) {
+    // Deadspots / poor spots: strictly 0 opacity (no color)
+    if (i < 18) {
       lut[idx] = 0;
       lut[idx + 1] = 0;
       lut[idx + 2] = 0;
@@ -27,33 +48,27 @@ function buildSubtleThermalLUT(isDarkMode: boolean): Uint8ClampedArray {
       continue;
     }
 
-    const t = (i - 24) / (255 - 24); // 0..1
+    const t = (i - 18) / (255 - 18); // 0..1
     let r = 0;
     let g = 0;
     let b = 0;
 
-    if (t < 0.36) {
-      // Soft Warm Yellow (#FACC15) -> Golden Amber (#F59E0B)
-      const lt = t / 0.36;
-      r = Math.round(250 + (245 - 250) * lt);
-      g = Math.round(204 + (158 - 204) * lt);
-      b = Math.round(21 + (11 - 21) * lt);
-    } else if (t < 0.70) {
-      // Golden Amber (#F59E0B) -> Warm Coral Orange (#EA580C)
-      const lt = (t - 0.36) / 0.34;
-      r = Math.round(245 + (234 - 245) * lt);
-      g = Math.round(158 + (88 - 158) * lt);
-      b = Math.round(11 + (12 - 11) * lt);
+    if (t < 0.5) {
+      // Outer halo / Moderate spot: Soft Mint Green (#6EE7B7) -> Vibrant Emerald (#22C55E)
+      const lt = t / 0.5;
+      r = Math.round(110 + (34 - 110) * lt);
+      g = Math.round(231 + (197 - 231) * lt);
+      b = Math.round(183 + (94 - 183) * lt);
     } else {
-      // Warm Coral Orange (#EA580C) -> Soft Rose-Crimson Core (#DC2626)
-      const lt = (t - 0.70) / 0.30;
-      r = Math.round(234 + (220 - 234) * lt);
-      g = Math.round(88 + (38 - 88) * lt);
-      b = Math.round(12 + (38 - 12) * lt);
+      // Good -> Very Good Spot: Vibrant Emerald (#22C55E) -> Rich Deep Forest Green (#15803D)
+      const lt = (t - 0.5) / 0.5;
+      r = Math.round(34 + (21 - 34) * lt);
+      g = Math.round(197 + (128 - 197) * lt);
+      b = Math.round(94 + (61 - 94) * lt);
     }
 
-    // Smooth alpha curve starting gently at 12% and capping at maxAlpha
-    const alphaCurve = 0.14 + 0.86 * Math.pow(t, 0.92);
+    // Gradual opacity ramp from 0% (bad spot) up to mild transparent green (very good spot)
+    const alphaCurve = Math.pow(t, 1.12);
     const a = Math.round(alphaCurve * maxAlpha);
 
     lut[idx] = r;
@@ -71,14 +86,16 @@ export interface ViabilityHeatmapOptions {
   productType: string;
   isDarkMode: boolean;
   activeVendors: TaggedVendor[];
+  hotspots?: DemandHotspot[];
 }
 
 /**
  * World-pinned Geographic Huff Gravity Heatmap Layer.
  *
- * Uses a native Leaflet `L.ImageOverlay` locked to fixed geographic LatLngBounds
- * so the heatmap NEVER shifts, stretches, or changes when zooming in or out,
- * and scales in 100% pixel-perfect sync with OpenStreetMap street tiles.
+ * - Scale: 0% opacity on deadspots/bad spots -> gradually turning into a mild transparent
+ *   green on very good spots (richer/darker green only on top spots).
+ * - Renders exclusively on detected DemandHotspots (1-to-1 match with map hotspots).
+ * - 100% location-locked when zooming in/out via geographic L.ImageOverlay.
  */
 export class ViabilityHeatmapLayer extends L.Layer {
   private imageOverlay: L.ImageOverlay | null = null;
@@ -115,23 +132,22 @@ export class ViabilityHeatmapLayer extends L.Layer {
     const map = this._map;
     if (!map) return;
 
-    const { centerLat, centerLng, productType, isDarkMode, activeVendors } = this.opts;
+    const { centerLat, centerLng, productType, isDarkMode, activeVendors, hotspots } = this.opts;
     const normProd = (productType || 'taho').toLowerCase();
 
-    // Only re-render when product, theme, vendor statuses, or base location changes (NEVER on zoom!)
     const vendorSig = activeVendors
       .map((v) => `${v.id}:${v.status}:${v.lat.toFixed(4)},${v.lng.toFixed(4)}`)
       .join('|');
-    const stateKey = `${centerLat.toFixed(3)},${centerLng.toFixed(3)}|${normProd}|${isDarkMode}|${vendorSig}`;
+    const hotspotSig = hotspots ? hotspots.map((h) => `${h.id}:${h.opportunityScore}`).join(',') : 'default';
+    const stateKey = `${centerLat.toFixed(3)},${centerLng.toFixed(3)}|${normProd}|${isDarkMode}|${vendorSig}|${hotspotSig}`;
 
     if (stateKey === this.lastKey && this.imageOverlay) {
       return;
     }
     this.lastKey = stateKey;
 
-    // Cover a wide ~13.5km x 13.5km geographic bounding box around the session center
-    const LAT_SPAN_HALF = 0.060; // ~6.6km north/south
-    const LNG_SPAN_HALF = 0.062; // ~6.7km east/west
+    const LAT_SPAN_HALF = 0.095;
+    const LNG_SPAN_HALF = 0.095;
 
     const south = centerLat - LAT_SPAN_HALF;
     const north = centerLat + LAT_SPAN_HALF;
@@ -139,10 +155,13 @@ export class ViabilityHeatmapLayer extends L.Layer {
     const east = centerLng + LNG_SPAN_HALF;
     const bounds = L.latLngBounds([south, west], [north, east]);
 
-    const anchors: TransitAnchor[] = generateWideScopeAnchors(centerLat, centerLng, 8500);
+    const detectedHotspots: DemandHotspot[] =
+      hotspots && hotspots.length > 0
+        ? hotspots
+        : getDemandHotspotsForViewport({ north, south, east, west }, centerLat, centerLng, 14);
+
     const baseCompetitors = generateCompetitorsAround(centerLat, centerLng);
     const allCompetitors: CompetitorNode[] = [...baseCompetitors];
-
     for (const v of activeVendors) {
       if (v.status !== 'sold_out') {
         allCompetitors.push({
@@ -155,22 +174,49 @@ export class ViabilityHeatmapLayer extends L.Layer {
       }
     }
 
-    const archetype =
-      BUSINESS_ARCHETYPES.find((a) => normProd.includes(a.id)) ||
-      BUSINESS_ARCHETYPES[2];
-
     const cosLat = Math.cos((centerLat * Math.PI) / 180);
     const mPerDegLat = 110540;
     const mPerDegLng = 111320 * cosLat;
 
-    const preparedAnchors = anchors.map((a) => {
-      const affinity = getProductAnchorAffinity(normProd, a.type);
-      return {
-        lat: a.lat,
-        lng: a.lng,
-        effectiveWeight: a.weight * affinity * archetype.transitWeight,
-      };
-    });
+    // Prepare ONLY the detected hotspots:
+    // - High hotspots (score >= 80, GOOD): rich mild transparent green core (up to 0.96)
+    // - Medium hotspots (score 50-79, AVERAGE): lighter translucent green (up to 0.56)
+    // - Low hotspots (score < 50, LOW): faintest whisper of green (up to 0.22) or near-transparent
+    const preparedHotspots = detectedHotspots
+      .filter((h) => !isPointInManilaBayOrWater(h.lat, h.lng))
+      .map((h) => {
+        const mappedType: TransitAnchor['type'] =
+          h.category === 'school'
+            ? 'school'
+            : h.category === 'commuter'
+              ? 'jeepney'
+              : 'tricycle';
+        const affinity = getProductAnchorAffinity(normProd, mappedType);
+
+        const maxCap =
+          h.potentialLevel === 'high'
+            ? 0.96
+            : h.potentialLevel === 'medium'
+              ? 0.56
+              : 0.22;
+
+        const basePeak =
+          h.potentialLevel === 'high'
+            ? 0.90
+            : h.potentialLevel === 'medium'
+              ? 0.50
+              : 0.18;
+
+        const radiusM = Math.max(150, h.radiusM || 180);
+        return {
+          lat: h.lat,
+          lng: h.lng,
+          sigmaSq2: 2 * (radiusM * 0.82) * (radiusM * 0.82),
+          maxDistSq: (radiusM * 2.0) * (radiusM * 2.0),
+          strength: Math.min(maxCap, basePeak * (0.85 + 0.15 * affinity)),
+          maxCap,
+        };
+      });
 
     const preparedCompetitors = allCompetitors.map((c) => {
       const isSame =
@@ -178,12 +224,11 @@ export class ViabilityHeatmapLayer extends L.Layer {
       return {
         lat: c.lat,
         lng: c.lng,
-        lambda: isSame ? 0.50 : 0.18,
+        lambda: isSame ? 0.34 : 0.10,
       };
     });
 
-    // 360 x 360 geographic grid across the box
-    const GRID_SIZE = 360;
+    const GRID_SIZE = 380;
     const offscreen = document.createElement('canvas');
     offscreen.width = GRID_SIZE;
     offscreen.height = GRID_SIZE;
@@ -192,51 +237,50 @@ export class ViabilityHeatmapLayer extends L.Layer {
 
     const imgData = offCtx.createImageData(GRID_SIZE, GRID_SIZE);
     const data = imgData.data;
-    const lut = buildSubtleThermalLUT(isDarkMode);
+    const lut = buildGreenViabilityLUT(isDarkMode);
 
-    // Balanced street-corridor reach (~340m max reach, ~150m sigma)
-    // so neighboring zones form natural corridors while residential interiors stay clear
-    const MAX_ANCHOR_DIST_SQ = 340 * 340;
-    const GAUSSIAN_DENOM = 2 * 150 * 150;
-    const COMP_RADIUS_SQ = 170 * 170;
-    const COMP_GAUSSIAN_DENOM = 2 * 80 * 80;
+    const COMP_RADIUS_SQ = 160 * 160;
+    const COMP_GAUSS_DENOM = 2 * 75 * 75;
 
     for (let gy = 0; gy < GRID_SIZE; gy++) {
       const lat = north - ((gy + 0.5) / GRID_SIZE) * (north - south);
       for (let gx = 0; gx < GRID_SIZE; gx++) {
         const lng = west + ((gx + 0.5) / GRID_SIZE) * (east - west);
-
-        let totalPull = 0;
-        let nearbyCount = 0;
-
-        for (let i = 0; i < preparedAnchors.length; i++) {
-          const a = preparedAnchors[i];
-          const dy = (lat - a.lat) * mPerDegLat;
-          if (dy > 350 || dy < -350) continue;
-          const dx = (lng - a.lng) * mPerDegLng;
-          if (dx > 350 || dx < -350) continue;
-
-          const distSq = dx * dx + dy * dy;
-          if (distSq > MAX_ANCHOR_DIST_SQ) continue;
-
-          const gaussPull = a.effectiveWeight * Math.exp(-distSq / GAUSSIAN_DENOM);
-          totalPull += gaussPull;
-          if (distSq <= 220 * 220) {
-            nearbyCount += 1;
-          }
-        }
-
         const pIdx = (gy * GRID_SIZE + gx) * 4;
-        if (totalPull < 0.08) {
+
+        if (isPointInManilaBayOrWater(lat, lng)) {
           data[pIdx + 3] = 0;
           continue;
         }
 
-        if (nearbyCount >= 2) {
-          totalPull *= 1.10;
+        let hotspotIntensity = 0;
+        for (let i = 0; i < preparedHotspots.length; i++) {
+          const h = preparedHotspots[i];
+          const dy = (lat - h.lat) * mPerDegLat;
+          if (dy > 440 || dy < -440) continue;
+          const dx = (lng - h.lng) * mPerDegLng;
+          if (dx > 440 || dx < -440) continue;
+
+          const distSq = dx * dx + dy * dy;
+          if (distSq > h.maxDistSq) continue;
+
+          const pull = Math.min(h.maxCap, h.strength * Math.exp(-distSq / h.sigmaSq2));
+          if (pull > hotspotIntensity) {
+            hotspotIntensity = pull;
+          } else if (pull > 0.06) {
+            hotspotIntensity = Math.min(
+              Math.max(hotspotIntensity, h.maxCap),
+              hotspotIntensity + pull * 0.24
+            );
+          }
         }
 
-        // Subtract same-product competitor saturation
+        if (hotspotIntensity < 0.07) {
+          data[pIdx + 3] = 0;
+          continue;
+        }
+
+        // Subtract same-product live competitor saturation (reduces green opacity where saturated)
         let compPenalty = 0;
         for (let j = 0; j < preparedCompetitors.length; j++) {
           const c = preparedCompetitors[j];
@@ -244,13 +288,12 @@ export class ViabilityHeatmapLayer extends L.Layer {
           const dx = (lng - c.lng) * mPerDegLng;
           const distSq = dx * dx + dy * dy;
           if (distSq <= COMP_RADIUS_SQ) {
-            compPenalty += c.lambda * Math.exp(-distSq / COMP_GAUSSIAN_DENOM);
+            compPenalty += c.lambda * Math.exp(-distSq / COMP_GAUSS_DENOM);
           }
         }
 
-        const netField = Math.max(0, totalPull - compPenalty);
-        const intensity = Math.min(1, 1 - Math.exp(-netField / 0.85));
-        const lutIndex = Math.min(255, Math.max(0, Math.round(intensity * 255))) * 4;
+        const netIntensity = Math.max(0, Math.min(1, hotspotIntensity - compPenalty));
+        const lutIndex = Math.min(255, Math.max(0, Math.round(netIntensity * 255))) * 4;
 
         data[pIdx] = lut[lutIndex];
         data[pIdx + 1] = lut[lutIndex + 1];
@@ -261,17 +304,16 @@ export class ViabilityHeatmapLayer extends L.Layer {
 
     offCtx.putImageData(imgData, 0, 0);
 
-    // Smooth upscale to 720x720 texture with gentle Gaussian blur
     const finalCanvas = document.createElement('canvas');
-    finalCanvas.width = 720;
-    finalCanvas.height = 720;
+    finalCanvas.width = 760;
+    finalCanvas.height = 760;
     const finalCtx = finalCanvas.getContext('2d');
     if (!finalCtx) return;
 
     finalCtx.imageSmoothingEnabled = true;
     finalCtx.imageSmoothingQuality = 'high';
-    finalCtx.filter = 'blur(5px)';
-    finalCtx.drawImage(offscreen, 0, 0, GRID_SIZE, GRID_SIZE, 0, 0, 720, 720);
+    finalCtx.filter = 'blur(4px)';
+    finalCtx.drawImage(offscreen, 0, 0, GRID_SIZE, GRID_SIZE, 0, 0, 760, 760);
 
     const dataUrl = finalCanvas.toDataURL('image/png');
 

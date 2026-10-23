@@ -156,10 +156,17 @@
   }
 
   function handleConfirmBuyerLocation(locationName: string, lat: number, lng: number) {
-    // A vendor must confirm the role switch instead of being silently overwritten.
+    // If the user is already a vendor and is simply changing their map location,
+    // preserve their vendor role and details without asking to switch to buyer.
     if (session && session.role === 'vendor') {
+      const updatedVendorSession: UserSession = {
+        ...session,
+        locationName,
+        lat,
+        lng,
+      };
       showBuyerPrompt = false;
-      showRoleSwitchModal = true;
+      saveSessionAndNavigate(updatedVendorSession, 'map');
       return;
     }
 

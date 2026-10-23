@@ -85,9 +85,44 @@
     renderMapElements();
   }
 
-  // Recommended viability spot for vendor ("Saan Magandang Pepwesto")
+  // Recommended viability spot for vendor ("Saan Magandang Pepwesto"):
+  // Picks the nearest GOOD score hotspot (opportunityScore >= 80) so both the dashed line
+  // and the low-traffic banner always recommend the closest high-traffic spot.
   $: recommendedViabilitySpot = (() => {
-    if (session.role !== 'vendor' || !anchors || anchors.length === 0) return null;
+    if (session.role !== 'vendor') return null;
+
+    const hotspotPool =
+      demandHotspots && demandHotspots.length > 0
+        ? demandHotspots
+        : getAllDemandHotspots(session.lat, session.lng);
+
+    const goodHotspots = hotspotPool.filter((h) => h.opportunityScore >= 80);
+    const candidates = goodHotspots.length > 0 ? goodHotspots : hotspotPool;
+
+    if (candidates.length > 0) {
+      let nearestH = candidates[0];
+      let minDist = calculateDistanceM(session.lat, session.lng, nearestH.lat, nearestH.lng);
+      for (const h of candidates) {
+        const d = calculateDistanceM(session.lat, session.lng, h.lat, h.lng);
+        if (d < minDist) {
+          nearestH = h;
+          minDist = d;
+        }
+      }
+      return {
+        id: nearestH.id,
+        name: language === 'tl' ? (nearestH.nameTl || nearestH.name) : nearestH.name,
+        lat: nearestH.lat,
+        lng: nearestH.lng,
+        distanceM: minDist,
+        ratingTl: 'Napakagandang Pwesto!',
+        ratingEn: 'GOOD Hotspot!',
+        score: nearestH.opportunityScore,
+        isNearUser: true,
+      };
+    }
+
+    if (!anchors || anchors.length === 0) return null;
     let nearest = anchors[0];
     let minD = calculateDistanceM(session.lat, session.lng, nearest.lat, nearest.lng);
     for (const a of anchors) {
@@ -113,6 +148,14 @@
 
   function handleZoomOut() {
     map?.zoomOut();
+  }
+
+  function formatDistance(meters: number): string {
+    if (meters >= 1000) {
+      const km = meters / 1000;
+      return `${Number(km.toFixed(1))}km`;
+    }
+    return `${Math.round(meters)}m`;
   }
 
   // Floating vendor list sidebar state
@@ -143,7 +186,7 @@
     session.lat,
     session.lng,
     activeHeatmapProduct,
-    4000,
+    8500,
     vendors
   );
 
@@ -620,16 +663,14 @@
         }
       ).addTo(map!);
 
-      // Distance & category rating badge marker on the spot
+      // Distance badge marker on the spot (rating text removed; >=1000m converted to km)
       const viabilitySpotHtml = `
         <div class="relative flex flex-col items-center cursor-pointer select-none group -translate-y-2">
           <div class="px-2.5 py-1 rounded-full ${
             isDarkMode ? 'bg-[#271A10] text-[#F59E0B] border-[#F59E0B]/50' : 'bg-[#4A2E1B] text-[#FAF7F2] border-white'
           } border shadow-lg text-[11px] font-black whitespace-nowrap mb-1 flex items-center gap-1.5 transition-transform group-hover:scale-105">
             ${getIconSvg('star', { size: 12, color: '#D97706' })}
-            <span>${language === 'tl' ? recommendedViabilitySpot.ratingTl : recommendedViabilitySpot.ratingEn}</span>
-            <span class="opacity-50">•</span>
-            <span class="text-[#D97706] font-extrabold">~${recommendedViabilitySpot.distanceM}m</span>
+            <span class="text-[#D97706] font-extrabold">~${formatDistance(recommendedViabilitySpot.distanceM)}</span>
           </div>
           <div class="w-10 h-10 rounded-2xl bg-[#D97706] text-white border-2 border-white shadow-xl flex items-center justify-center text-lg font-black transition-transform group-hover:scale-110">
             ${getIconSvg('map-pin', { size: 18, color: '#FFFFFF' })}
@@ -655,8 +696,7 @@
         <div class="p-1 space-y-1 text-xs">
           <div class="font-black text-[#D97706]">${language === 'tl' ? 'Saan Magandang Pepwesto?' : 'Recommended Stall Spot'}</div>
           <div class="font-bold text-sm">${recommendedViabilitySpot.name}</div>
-          <div class="text-gray-600">${language === 'tl' ? 'Kategorya' : 'Rating'}: <strong class="text-green-600">${language === 'tl' ? recommendedViabilitySpot.ratingTl : recommendedViabilitySpot.ratingEn} (${recommendedViabilitySpot.score}/100)</strong></div>
-          <div class="text-gray-600">${language === 'tl' ? 'Layo mula sa iyo' : 'Distance from you'}: <strong>~${recommendedViabilitySpot.distanceM} metro</strong></div>
+          <div class="text-gray-600">${language === 'tl' ? 'Layo mula sa iyo' : 'Distance from you'}: <strong>~${formatDistance(recommendedViabilitySpot.distanceM)}</strong></div>
         </div>
       `);
     }
@@ -670,6 +710,7 @@
           productType: activeHeatmapProduct,
           isDarkMode,
           activeVendors: vendors,
+          hotspots: listHotspots,
         });
         heatmapCanvasLayer.addTo(map!);
       } else {
@@ -679,6 +720,7 @@
           productType: activeHeatmapProduct,
           isDarkMode,
           activeVendors: vendors,
+          hotspots: listHotspots,
         });
       }
 
@@ -686,10 +728,10 @@
       if (heatmapProbeResult) {
         const probeColor =
           heatmapProbeResult.score >= 80
-            ? '#DC2626'
+            ? '#16A34A'
             : heatmapProbeResult.score >= 60
-              ? '#D97706'
-              : '#CA8A04';
+              ? '#22C55E'
+              : '#86EFAC';
         const probeHtml = `
           <div class="relative flex flex-col items-center select-none -translate-y-3">
             <div class="px-2.5 py-1 rounded-full bg-[#1A120B] text-white border-2 border-white shadow-2xl text-[11px] font-black whitespace-nowrap mb-1 flex items-center gap-1">
@@ -729,7 +771,7 @@
             <span>🎯</span>
             <span>${language === 'tl' ? 'Puntiryang Pwesto' : 'Target Spot'}</span>
             <span class="opacity-50">•</span>
-            <span class="text-[#F59E0B] font-extrabold">~${distM}m (${etaMins} min)</span>
+            <span class="text-[#F59E0B] font-extrabold">~${formatDistance(distM)} (${etaMins} min)</span>
           </div>
           <div class="relative flex items-center justify-center">
             <span class="absolute w-10 h-10 rounded-full bg-[#F59E0B]/50 animate-ping"></span>
@@ -1333,7 +1375,7 @@
 
                   <div class="flex items-center justify-between mt-2 pt-1.5 border-t border-black/5 dark:border-white/5 text-[11px]">
                     <span class={`font-bold ${isDarkMode ? 'text-[#D6C7B2]' : 'text-[#796658]'}`}>
-                      📍 {vendor.distanceM}m • ~{vendor.etaMins}m
+                      📍 {formatDistance(vendor.distanceM)} • ~{vendor.etaMins}m
                     </span>
 
                     <span class={`text-[10px] font-black px-2 py-0.5 rounded-full ${
@@ -1616,7 +1658,7 @@
             Layo & Oras
           </span>
           <p class="text-xs font-black mt-0.5">
-            {selectedVendor.distanceM}m • ~{selectedVendor.etaMins} mins
+            {formatDistance(selectedVendor.distanceM)} • ~{selectedVendor.etaMins} mins
           </p>
         </div>
         <div class={`p-2.5 rounded-2xl border ${
@@ -1658,6 +1700,30 @@
         onClose={() => (selectedHotspot = null)}
         onTargetLocation={handleTargetLocation}
       />
+    </div>
+  {/if}
+
+  <!-- LOW-TO-ZERO TRAFFIC RED BOTTOM WARNING BAR (VENDOR POV) -->
+  {#if session.role === 'vendor' && viability.score < 55 && !selectedVendor && !selectedHotspot && !heatmapProbeResult && (recommendedViabilitySpot || recommendedZones[0])}
+    {@const bestSpot = recommendedViabilitySpot || recommendedZones[0]!}
+    <div class="absolute bottom-5 left-1/2 -translate-x-1/2 z-30 w-full max-w-2xl px-4 pointer-events-auto animate-fade-in">
+      <div class="w-full bg-red-600/95 text-white border border-red-400/50 shadow-2xl rounded-2xl px-4 py-3 backdrop-blur-md flex flex-col sm:flex-row items-center justify-between gap-2.5 text-center sm:text-left">
+        <div class="flex items-center gap-2 min-w-0">
+          <span class="text-base shrink-0">⚠️</span>
+          <p class="text-xs sm:text-sm font-black leading-snug">
+            {language === 'tl'
+              ? `Mababa ang trapiko, huwag ka rito pls — doon ka sa ${bestSpot.name} (~${formatDistance(bestSpot.distanceM)})`
+              : `Low foot traffic, please don't stay here — go to ${bestSpot.name} (~${formatDistance(bestSpot.distanceM)})`}
+          </p>
+        </div>
+        <button
+          type="button"
+          on:click={() => handleTargetLocation(bestSpot.lat, bestSpot.lng, bestSpot.name)}
+          class="px-3 py-1.5 rounded-xl bg-white text-red-700 hover:bg-red-50 text-xs font-black shrink-0 transition cursor-pointer shadow-sm active:scale-95"
+        >
+          {language === 'tl' ? 'Puntahan →' : 'Go There →'}
+        </button>
+      </div>
     </div>
   {/if}
 
@@ -1791,7 +1857,7 @@
           <div class="space-y-2 text-xs">
             <div class="flex items-start justify-between gap-2">
               <span class="text-[#796658] dark:text-[#D6C7B2]">{language === 'tl' ? 'Dagsa ng Tao:' : 'Foot Traffic:'}</span>
-              <span class="font-bold text-right truncate">{language === 'tl' ? 'Mataas (~' + viability.nearestAnchorDistM + 'm sa sakayan)' : 'High (~' + viability.nearestAnchorDistM + 'm to hub)'}</span>
+              <span class="font-bold text-right truncate">{language === 'tl' ? 'Mataas (~' + formatDistance(viability.nearestAnchorDistM) + ' sa sakayan)' : 'High (~' + formatDistance(viability.nearestAnchorDistM) + ' to hub)'}</span>
             </div>
             <div class="flex items-start justify-between gap-2">
               <span class="text-[#796658] dark:text-[#D6C7B2]">{language === 'tl' ? 'Pinakamalapit na Sakayan:' : 'Nearest Transit Stop:'}</span>
@@ -1949,19 +2015,19 @@
         <button
           type="button"
           on:click={() => (showZoneSuggestionsDrawer = true)}
-          class="px-2 py-0.5 rounded-lg bg-red-500/15 hover:bg-red-500/25 text-red-600 dark:text-red-400 text-[10px] font-black cursor-pointer transition"
+          class="px-2 py-0.5 rounded-lg bg-green-600/15 hover:bg-green-600/25 text-green-700 dark:text-green-400 text-[10px] font-black cursor-pointer transition"
         >
           🎯 {language === 'tl' ? 'Top Zones' : 'Top Zones'}
         </button>
       </div>
 
-      <!-- Continuous Thermal Gradient Bar -->
+      <!-- Continuous Green Viability Gradient Bar -->
       <div class="space-y-1">
-        <div class="h-2 w-full rounded-full bg-gradient-to-r from-yellow-300 via-amber-500 to-red-600 shadow-inner"></div>
+        <div class="h-2 w-full rounded-full bg-gradient-to-r from-emerald-500/5 via-emerald-400/55 to-green-700/85 border border-black/10 dark:border-white/15 shadow-inner"></div>
         <div class="flex items-center justify-between text-[9px] font-extrabold opacity-80">
-          <span>{language === 'tl' ? '🟡 Katamtaman' : '🟡 Moderate'}</span>
-          <span>{language === 'tl' ? '🟠 Mataas na Tao' : '🟠 High Traffic'}</span>
-          <span class="text-red-500 font-black">{language === 'tl' ? '🔴 Sweet Spot (0 Kalaban)' : '🔴 Prime Uncontested'}</span>
+          <span>{language === 'tl' ? '⚪ Mahina' : '⚪ Low'}</span>
+          <span>{language === 'tl' ? '🟢 Katamtaman' : '🟢 Moderate'}</span>
+          <span class="text-green-600 dark:text-green-400 font-black">{language === 'tl' ? '🟢 Napakaganda' : '🟢 Prime Spot'}</span>
         </div>
       </div>
 
@@ -1995,7 +2061,7 @@
       </div>
 
       <p class="text-[9px] opacity-75 leading-tight">
-        💡 {language === 'tl' ? 'Pindutin ang kahit anong pulang bahagi sa mapa para suriin ang pwesto at ruta.' : 'Tap any glowing zone on the map to analyze viability & route.'}
+        💡 {language === 'tl' ? 'Pindutin ang kahit anong berdeng bahagi sa mapa para suriin ang pwesto at ruta.' : 'Tap any green zone on the map to analyze viability & route.'}
       </p>
     </div>
   {/if}
@@ -2018,17 +2084,17 @@
               {language === 'tl' ? `Malapit sa ${heatmapProbeResult.nearestAnchorName}` : `Near ${heatmapProbeResult.nearestAnchorName}`}
             </h4>
             <p class="text-[11px] font-bold text-[#796658] dark:text-[#D6C7B2]">
-              ~{walkDist}m {language === 'tl' ? 'mula sa iyo' : 'from you'} • ~{walkEta} {language === 'tl' ? 'min lakad' : 'min walk'}
+              ~{formatDistance(walkDist)} {language === 'tl' ? 'mula sa iyo' : 'from you'} • ~{walkEta} {language === 'tl' ? 'min lakad' : 'min walk'}
             </p>
           </div>
 
           <div class="flex items-center gap-1.5 shrink-0">
             <div class={`px-2.5 py-1 rounded-xl text-xs font-black border ${
               heatmapProbeResult.score >= 80
-                ? 'bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/30'
+                ? 'bg-green-500/15 text-green-700 dark:text-green-400 border-green-500/30'
                 : heatmapProbeResult.score >= 60
-                  ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30'
-                  : 'bg-yellow-500/15 text-yellow-700 dark:text-yellow-400 border-yellow-500/30'
+                  ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
+                  : 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30'
             }`}>
               {heatmapProbeResult.score}/100
             </div>
@@ -2049,7 +2115,7 @@
         <div class="grid grid-cols-2 gap-2 text-[11px]">
           <div class={`p-2.5 rounded-xl ${isDarkMode ? 'bg-[#1A120B]' : 'bg-[#FAF7F2]'}`}>
             <span class="text-[9px] uppercase font-bold opacity-70 block">{language === 'tl' ? 'Huff Pull (Sakayan)' : 'Anchor Pull'}</span>
-            <span class="font-black text-xs">~{heatmapProbeResult.nearestAnchorDistM}m {language === 'tl' ? 'sa hub' : 'to hub'}</span>
+            <span class="font-black text-xs">~{formatDistance(heatmapProbeResult.nearestAnchorDistM)} {language === 'tl' ? 'sa hub' : 'to hub'}</span>
           </div>
           <div class={`p-2.5 rounded-xl ${isDarkMode ? 'bg-[#1A120B]' : 'bg-[#FAF7F2]'}`}>
             <span class="text-[9px] uppercase font-bold opacity-70 block">{language === 'tl' ? 'Kaparehong Paninda (150m)' : 'Same-Product Rivals'}</span>
@@ -2126,7 +2192,7 @@
                     <h4 class="text-sm font-black text-[#4A2E1B] dark:text-[#FAF7F2]">{zone.nameTl || zone.name}</h4>
                   </div>
                   <p class="text-xs font-bold text-[#D97706] mt-0.5">
-                    ~{zone.distanceM}m • ~{Math.max(1, Math.round(zone.distanceM / 67))} {language === 'tl' ? 'min lakad mula rito' : 'min walk'}
+                    ~{formatDistance(zone.distanceM)} • ~{Math.max(1, Math.round(zone.distanceM / 67))} {language === 'tl' ? 'min lakad mula rito' : 'min walk'}
                   </p>
                 </div>
                 <div class="px-2.5 py-1 rounded-xl bg-green-500/15 border border-green-500/30 text-green-600 dark:text-green-400 text-xs font-black shrink-0 text-center">
