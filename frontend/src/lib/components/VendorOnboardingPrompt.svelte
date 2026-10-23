@@ -1,5 +1,7 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import type { Language, ProductType } from '../types';
+  import { searchOSM, type OSMSearchResult } from '../services/osmGeocoding';
   import Icon from './Icon.svelte';
 
   export let language: Language = 'tl';
@@ -18,13 +20,118 @@
   let acceptsGcash: boolean = true;
   let uploadedPhotoPreview: string | null = null;
   let isCameraActive: boolean = false;
-  let selectedBaseId: string = 'gps';
-  const BASE_PRESETS = [
-    { id: 'espana', label: 'España / UST', icon: '🏫', lat: 14.6091, lng: 120.9898, name: 'España / UST & Sampaloc' },
-    { id: 'welcome', label: 'Welcome Rotonda', icon: '🔄', lat: 14.6177, lng: 121.0006, name: 'Welcome Rotonda, QC' },
-    { id: 'cubao', label: 'Cubao', icon: '🏢', lat: 14.6200, lng: 121.0530, name: 'Cubao (LRT-2 / MRT-3)' },
-    { id: 'recto', label: 'Recto', icon: '🚆', lat: 14.6054, lng: 120.9822, name: 'Recto / Doroteo Jose' },
+
+  // Location state (own GPS or OpenStreetMap search, matching BuyerSearchPrompt)
+  let searchQuery: string = 'Kasalukuyang Lokasyon (GPS)';
+  let detectedLat: number = 14.6091;
+  let detectedLng: number = 120.9898;
+  let isDetectingGPS: boolean = false;
+  let gpsStatus: 'active' | 'denied' | 'idle' = 'idle';
+  let hasCustomLocation: boolean = false;
+
+  // OpenStreetMap live geocoding state
+  let osmResults: OSMSearchResult[] = [];
+  let isSearchingOSM: boolean = false;
+  let searchDebounceTimer: any = null;
+
+  const POPULAR_LOCATIONS = [
+    { name: 'Welcome Rotonda', lat: 14.6177, lng: 121.0006 },
+    { name: 'PHILCOA, QC', lat: 14.6518, lng: 121.0493 },
+    { name: 'Quezon Ave (MRT-3)', lat: 14.6425, lng: 121.0387 },
+    { name: 'Cubao (LRT-2 / MRT-3)', lat: 14.6200, lng: 121.0530 },
+    { name: 'Monumento (LRT-1)', lat: 14.6548, lng: 120.9839 },
+    { name: 'LRT-1 D. Jose / Recto', lat: 14.6054, lng: 120.9822 },
+    { name: 'LRT-1 Baclaran / Taft', lat: 14.5343, lng: 120.9983 },
+    { name: 'España / UST', lat: 14.6091, lng: 120.9898 },
   ];
+
+  onMount(() => {
+    requestGPS();
+  });
+
+  function requestGPS() {
+    if (!navigator.geolocation) {
+      gpsStatus = 'denied';
+      return;
+    }
+
+    isDetectingGPS = true;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        detectedLat = pos.coords.latitude;
+        detectedLng = pos.coords.longitude;
+        gpsStatus = 'active';
+        hasCustomLocation = false;
+        isDetectingGPS = false;
+        searchQuery = language === 'tl' ? 'Kasalukuyang Lokasyon (GPS)' : 'Current Location (GPS)';
+        osmResults = [];
+      },
+      () => {
+        gpsStatus = 'denied';
+        isDetectingGPS = false;
+      },
+      { enableHighAccuracy: true, timeout: 6000 }
+    );
+  }
+
+  function handleLocationInput(e: Event) {
+    const val = (e.target as HTMLInputElement).value;
+    searchQuery = val;
+    hasCustomLocation = false;
+
+    if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+    if (
+      val.trim().length < 2 ||
+      val === 'Kasalukuyang Lokasyon (GPS)' ||
+      val === 'Current Location (GPS)'
+    ) {
+      osmResults = [];
+      isSearchingOSM = false;
+      return;
+    }
+
+    isSearchingOSM = true;
+    searchDebounceTimer = setTimeout(async () => {
+      osmResults = await searchOSM(val);
+      isSearchingOSM = false;
+    }, 280);
+  }
+
+  function selectOSM(res: OSMSearchResult) {
+    detectedLat = res.lat;
+    detectedLng = res.lng;
+    searchQuery = res.subtitle ? `${res.name}, ${res.subtitle}` : res.name;
+    hasCustomLocation = true;
+    osmResults = [];
+  }
+
+  function selectShortcut(loc: { name: string; lat: number; lng: number }) {
+    detectedLat = loc.lat;
+    detectedLng = loc.lng;
+    searchQuery = loc.name;
+    hasCustomLocation = true;
+    osmResults = [];
+  }
+
+  async function handleLocationEnter() {
+    if (osmResults.length > 0) {
+      selectOSM(osmResults[0]);
+      return;
+    }
+    const trimmed = searchQuery.trim();
+    if (
+      trimmed.length >= 2 &&
+      trimmed !== 'Kasalukuyang Lokasyon (GPS)' &&
+      trimmed !== 'Current Location (GPS)'
+    ) {
+      isSearchingOSM = true;
+      const fresh = await searchOSM(trimmed);
+      isSearchingOSM = false;
+      if (fresh.length > 0) {
+        selectOSM(fresh[0]);
+      }
+    }
+  }
 
   const PRODUCT_OPTIONS: {
     id: ProductType;
@@ -98,19 +205,41 @@
     uploadedPhotoPreview = 'https://images.unsplash.com/photo-1541696432-82c6da8ce7bf?auto=format&fit=crop&w=400&q=80';
   }
 
-  function handleSubmit() {
+  async function handleSubmit() {
     let finalProductName = 'Taho';
     if (selectedType === 'siomai') finalProductName = 'Siomai';
     if (selectedType === 'balut') finalProductName = 'Balut';
     if (selectedType === 'other') finalProductName = otherProductName.trim() || 'Paninda';
 
-    let customLoc: { lat: number; lng: number; name: string } | undefined = undefined;
-    if (selectedBaseId !== 'gps') {
-      const found = BASE_PRESETS.find((p) => p.id === selectedBaseId);
-      if (found) {
-        customLoc = { lat: found.lat, lng: found.lng, name: found.name };
+    // Resolve typed location query if the vendor did not click a dropdown item yet
+    const trimmedLoc = searchQuery.trim();
+    const isGpsLabel =
+      !trimmedLoc ||
+      trimmedLoc === 'Kasalukuyang Lokasyon (GPS)' ||
+      trimmedLoc === 'Current Location (GPS)';
+
+    if (!isGpsLabel && !hasCustomLocation) {
+      if (osmResults.length > 0) {
+        selectOSM(osmResults[0]);
+      } else {
+        const fresh = await searchOSM(trimmedLoc);
+        if (fresh.length > 0) {
+          selectOSM(fresh[0]);
+        } else {
+          hasCustomLocation = true;
+        }
       }
     }
+
+    let customLoc: { lat: number; lng: number; name: string } | undefined = undefined;
+    if (hasCustomLocation || gpsStatus === 'active') {
+      customLoc = {
+        lat: detectedLat,
+        lng: detectedLng,
+        name: searchQuery.trim() || 'Kasalukuyang Lokasyon (GPS)',
+      };
+    }
+
     const safeQty = Math.max(1, Math.round(Number(productQuantity) || currentProductMeta.defaultQty));
     onConfirmVendor(finalProductName, selectedType, uploadedPhotoPreview || undefined, customLoc, {
       quantity: safeQty,
@@ -130,44 +259,114 @@
       </h2>
       <p class="text-xs sm:text-sm text-[#796658] font-medium">
         {language === 'tl'
-          ? 'Piliin ang paninda at mag-upload ng litrato ng iyong kaldero o kariton.'
-          : 'Choose your product and upload a quick photo of your stall or kaldero.'}
+          ? 'Piliin ang lokasyon, paninda, at mag-upload ng litrato ng iyong kaldero o kariton.'
+          : 'Choose your location, product, and upload a quick photo of your stall or kaldero.'}
       </p>
     </div>
 
-    <!-- Base / Starting Area Selector -->
+    <!-- Starting Location: Own GPS or Search (same as Buyer) -->
     <div class="space-y-2">
-      <span class="text-xs font-bold uppercase tracking-wider text-[#796658] block">
-        {language === 'tl' ? 'Saan Ka Magmumula / Taga-Saan Ka?' : 'Starting Base / Location:'}
-      </span>
-      <div class="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-bold uppercase tracking-wider text-[#796658]">
+          {language === 'tl' ? 'Saan Ka Magmumula / Lokasyon:' : 'Starting Base / Location:'}
+        </span>
+
+        {#if isDetectingGPS}
+          <span class="text-[11px] font-bold text-[#D97706] animate-pulse">
+            📡 {language === 'tl' ? 'Kinukuha ang GPS...' : 'Detecting GPS...'}
+          </span>
+        {:else if gpsStatus === 'active' && !hasCustomLocation}
+          <span class="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
+            ✓ GPS Active
+          </span>
+        {/if}
+      </div>
+
+      <div class="relative flex items-center gap-2">
+        <div class="relative flex-1">
+          <span class="absolute left-4 top-1/2 -translate-y-1/2 text-[#796658]">
+            <Icon name="pin" size={18} />
+          </span>
+          <input
+            type="text"
+            value={searchQuery}
+            on:input={handleLocationInput}
+            on:focus={() => {
+              if (
+                searchQuery === 'Kasalukuyang Lokasyon (GPS)' ||
+                searchQuery === 'Current Location (GPS)'
+              ) {
+                searchQuery = '';
+              }
+            }}
+            on:keydown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleLocationEnter();
+              }
+            }}
+            placeholder={language === 'tl' ? 'I-search ang kalye, MRT/LRT, o lugar...' : 'Search any street, landmark, or city...'}
+            class="w-full pl-11 pr-4 py-3 rounded-2xl bg-[#FAF7F2] border-2 border-[#EAE4D9] focus:border-[#4A2E1B] focus:bg-white text-sm font-bold text-[#4A2E1B] outline-none transition"
+          />
+
+          <!-- Live OpenStreetMap Dropdown Results -->
+          {#if isSearchingOSM || osmResults.length > 0}
+            <div class="absolute left-0 right-0 top-full mt-1.5 bg-white rounded-2xl border border-[#EAE4D9] shadow-xl z-50 max-h-56 overflow-y-auto divide-y divide-[#FAF7F2]">
+              {#if isSearchingOSM}
+                <div class="px-4 py-3 text-xs font-bold text-[#796658] flex items-center gap-2">
+                  <span class="animate-spin">⏳</span>
+                  <span>{language === 'tl' ? 'Hinahanap sa OpenStreetMap...' : 'Searching OpenStreetMap...'}</span>
+                </div>
+              {:else}
+                {#each osmResults as res}
+                  <button
+                    type="button"
+                    on:click={() => selectOSM(res)}
+                    class="w-full px-4 py-2.5 text-left hover:bg-[#FAF7F2] transition flex items-start gap-2.5 cursor-pointer"
+                  >
+                    <span class="text-[#D97706] mt-0.5"><Icon name="pin" size={16} /></span>
+                    <div class="min-w-0 flex-1">
+                      <p class="text-xs font-bold text-[#4A2E1B] truncate">{res.name}</p>
+                      <p class="text-[11px] text-[#796658] truncate">{res.subtitle || res.displayName}</p>
+                    </div>
+                  </button>
+                {/each}
+              {/if}
+            </div>
+          {/if}
+        </div>
+
         <button
           type="button"
-          on:click={() => (selectedBaseId = 'gps')}
-          class={`p-2.5 rounded-2xl border text-xs font-bold flex flex-col items-center justify-center gap-1 transition cursor-pointer ${
-            selectedBaseId === 'gps'
-              ? 'bg-[#4A2E1B] text-[#FAF7F2] border-[#4A2E1B] shadow-xs'
-              : 'bg-[#FAF7F2] text-[#4A2E1B] border-[#EAE4D9] hover:bg-white'
-          }`}
+          on:click={requestGPS}
+          title={language === 'tl' ? 'Gamitin ang kasalukuyang GPS' : 'Use current GPS location'}
+          class="p-3 rounded-2xl bg-[#FAF7F2] border-2 border-[#EAE4D9] hover:border-[#4A2E1B] text-[#4A2E1B] font-bold text-xs cursor-pointer transition min-h-[48px] px-3.5 flex items-center gap-1 shrink-0"
         >
-          <span class="text-base">📍</span>
-          <span class="text-[11px] font-bold">GPS</span>
+          <Icon name="navigation" size={16} />
+          <span>GPS</span>
         </button>
+      </div>
 
-        {#each BASE_PRESETS as preset}
-          <button
-            type="button"
-            on:click={() => (selectedBaseId = preset.id)}
-            class={`p-2.5 rounded-2xl border text-xs font-bold flex flex-col items-center justify-center gap-1 transition cursor-pointer truncate ${
-              selectedBaseId === preset.id
-                ? 'bg-[#4A2E1B] text-[#FAF7F2] border-[#4A2E1B] shadow-xs'
-                : 'bg-[#FAF7F2] text-[#4A2E1B] border-[#EAE4D9] hover:bg-white'
-            }`}
-          >
-            <span class="text-base">{preset.icon}</span>
-            <span class="text-[11px] font-bold truncate max-w-full">{preset.label.split('/')[0]}</span>
-          </button>
-        {/each}
+      <!-- Common Presets (Metro Manila Hotspots) -->
+      <div class="pt-0.5">
+        <span class="text-[11px] font-bold text-[#796658] block mb-1.5">
+          {language === 'tl' ? 'Karaniwang Presets (Metro Manila Hotspots):' : 'Common Presets (Metro Manila Hotspots):'}
+        </span>
+        <div class="flex flex-wrap gap-1.5">
+          {#each POPULAR_LOCATIONS as loc}
+            <button
+              type="button"
+              on:click={() => selectShortcut(loc)}
+              class={`px-3 py-1.5 rounded-full border text-xs font-bold transition cursor-pointer ${
+                hasCustomLocation && searchQuery === loc.name
+                  ? 'bg-[#4A2E1B] text-[#FAF7F2] border-[#4A2E1B]'
+                  : 'bg-[#FAF7F2] hover:bg-[#EAE4D9]/60 border-[#EAE4D9] text-[#4A2E1B]'
+              }`}
+            >
+              {loc.name}
+            </button>
+          {/each}
+        </div>
       </div>
     </div>
 
