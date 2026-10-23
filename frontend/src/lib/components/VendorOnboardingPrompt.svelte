@@ -201,8 +201,16 @@
   }
 
   function simulateTakePhoto() {
-    // Quick camera capture simulation for desktop/testing
-    uploadedPhotoPreview = 'https://images.unsplash.com/photo-1541696432-82c6da8ce7bf?auto=format&fit=crop&w=400&q=80';
+    // Quick camera capture simulation matching selected product
+    if (selectedType === 'taho') {
+      uploadedPhotoPreview = '/assets/taho.jpg';
+    } else if (selectedType === 'siomai') {
+      uploadedPhotoPreview = 'https://images.unsplash.com/photo-1563245372-f21724e3856d?auto=format&fit=crop&w=400&q=80';
+    } else if (selectedType === 'balut') {
+      uploadedPhotoPreview = '/assets/balut.jpg';
+    } else {
+      uploadedPhotoPreview = 'https://images.unsplash.com/photo-1517256064527-09c73fc73e38?auto=format&fit=crop&w=400&q=80';
+    }
   }
 
   async function handleSubmit() {

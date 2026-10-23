@@ -95,7 +95,7 @@ export function generateTaggedVendorsAround(centerLat: number, centerLng: number
       acceptsGcash: true,
       quantity: 45,
       quantityUnit: 'baso',
-      verifiedPhoto: 'https://images.unsplash.com/photo-1541696432-82c6da8ce7bf?auto=format&fit=crop&w=400&q=80',
+      verifiedPhoto: '/assets/taho.jpg',
     },
     {
       id: 'v-siomai-1',
@@ -131,7 +131,7 @@ export function generateTaggedVendorsAround(centerLat: number, centerLng: number
       acceptsGcash: false,
       quantity: 35,
       quantityUnit: 'piraso',
-      verifiedPhoto: 'https://images.unsplash.com/photo-1506084868230-bb9d95c24759?auto=format&fit=crop&w=400&q=80',
+      verifiedPhoto: '/assets/balut.jpg',
     },
     {
       id: 'v-other-1',
@@ -167,7 +167,7 @@ export function generateTaggedVendorsAround(centerLat: number, centerLng: number
       acceptsGcash: false,
       quantity: 30,
       quantityUnit: 'baso',
-      verifiedPhoto: 'https://images.unsplash.com/photo-1541696432-82c6da8ce7bf?auto=format&fit=crop&w=400&q=80',
+      verifiedPhoto: '/assets/taho.jpg',
     },
     {
       id: 'v-siomai-2',

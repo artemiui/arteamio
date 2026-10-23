@@ -27,6 +27,15 @@ export function formatBackendVendor(v: BackendVendor, userLat: number, userLng: 
     labelTl: v.product_name,
   };
 
+  const defaultPhoto =
+    v.product_type === 'taho'
+      ? '/assets/taho.jpg'
+      : v.product_type === 'siomai'
+        ? 'https://images.unsplash.com/photo-1563245372-f21724e3856d?auto=format&fit=crop&w=400&q=80'
+        : v.product_type === 'balut' || v.product_type === 'balot'
+          ? '/assets/balut.jpg'
+          : 'https://images.unsplash.com/photo-1517256064527-09c73fc73e38?auto=format&fit=crop&w=400&q=80';
+
   return {
     id: v.id,
     name: v.name,
@@ -40,7 +49,7 @@ export function formatBackendVendor(v: BackendVendor, userLat: number, userLng: 
     distanceM: dist,
     etaMins: eta,
     status: v.status,
-    verifiedPhoto: v.verified_photo,
+    verifiedPhoto: v.verified_photo || defaultPhoto,
   };
 }
 
