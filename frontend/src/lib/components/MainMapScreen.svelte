@@ -514,15 +514,16 @@
         });
         hotspotCircles.push(circle);
 
-        // Color-coded hotspot marker badge with Category Icon & Opportunity Score
+        // Color-coded hotspot marker badge with Category Icon (& Opportunity Score in Vendor mode only)
+        const isVendorMode = session.role === 'vendor';
         const markerHtml = `
           <div class="relative flex items-center justify-center cursor-pointer transition-transform hover:scale-110 active:scale-95 group">
             ${hotspot.potentialLevel === 'high' ? `<span class="absolute w-12 h-12 rounded-full animate-ping opacity-35" style="background-color: ${lvlMeta.mapFill}"></span>` : ''}
             <div class="px-2.5 py-1 rounded-xl shadow-lg flex items-center gap-1.5 border font-black text-xs transition-transform ${isSelected ? 'scale-110 ring-2 ring-white dark:ring-black' : ''}" style="background-color: ${isDarkMode ? '#271A10' : '#FFFFFF'}; border-color: ${lvlMeta.mapStroke}; color: ${isDarkMode ? '#FAF7F2' : '#4A2E1B'};">
               <span class="text-sm">${getIconSvg(catMeta.icon, { size: 14, color: isDarkMode ? '#FAF7F2' : '#4A2E1B' })}</span>
-              <span class="text-[10px] px-1.5 py-0.5 rounded-full text-white font-extrabold" style="background-color: ${lvlMeta.mapFill}">
+              ${isVendorMode ? `<span class="text-[10px] px-1.5 py-0.5 rounded-full text-white font-extrabold" style="background-color: ${lvlMeta.mapFill}">
                 ${hotspot.opportunityScore}
-              </span>
+              </span>` : ''}
             </div>
           </div>
         `;
@@ -531,8 +532,8 @@
           icon: L.divIcon({
             html: markerHtml,
             className: 'demand-hotspot-marker',
-            iconSize: [64, 32],
-            iconAnchor: [32, 16],
+            iconSize: [isVendorMode ? 64 : 36, 32],
+            iconAnchor: [isVendorMode ? 32 : 18, 16],
           }),
           zIndexOffset: isSelected ? 900 : (hotspot.potentialLevel === 'high' ? 700 : 600),
         }).addTo(map!);
@@ -1419,15 +1420,24 @@
                     : (isDarkMode ? 'bg-[#271A10] border-[#3D2717] hover:bg-[#352317]' : 'bg-white border-[#EAE4D9] hover:border-[#D6C7B2]')
                 }`}
               >
-                <!-- Left: Prominent Opportunity Rating & Score -->
-                <div class="w-22 shrink-0 flex flex-col items-start justify-center pr-3 border-r border-[#EAE4D9] dark:border-[#3D2717]">
-                  <span class={`text-sm sm:text-base font-black uppercase tracking-tight leading-none ${ratingMeta.textClass}`}>
-                    {ratingMeta.rating}
-                  </span>
-                  <span class={`text-xs font-extrabold mt-1 leading-none ${ratingMeta.textClass}`}>
-                    {hotspot.opportunityScore}/100
-                  </span>
-                </div>
+                {#if session.role === 'vendor'}
+                  <!-- Left: Prominent Opportunity Rating & Score (Tindero / Vendor Mode Only) -->
+                  <div class="w-22 shrink-0 flex flex-col items-start justify-center pr-3 border-r border-[#EAE4D9] dark:border-[#3D2717]">
+                    <span class={`text-sm sm:text-base font-black uppercase tracking-tight leading-none ${ratingMeta.textClass}`}>
+                      {ratingMeta.rating}
+                    </span>
+                    <span class={`text-xs font-extrabold mt-1 leading-none ${ratingMeta.textClass}`}>
+                      {hotspot.opportunityScore}/100
+                    </span>
+                  </div>
+                {:else}
+                  {@const catMeta = HOTSPOT_CATEGORY_META[hotspot.category] || HOTSPOT_CATEGORY_META.barangay}
+                  <div class={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${
+                    isDarkMode ? 'bg-[#352317] border-[#3D2717] text-[#F59E0B]' : 'bg-[#FAF7F2] border-[#EAE4D9] text-[#4A2E1B]'
+                  }`}>
+                    <Icon name={catMeta.icon} size={18} />
+                  </div>
+                {/if}
 
                 <!-- Right: Hotspot Name & Busy Hours -->
                 <div class="flex-1 min-w-0">

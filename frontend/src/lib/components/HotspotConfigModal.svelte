@@ -7,6 +7,7 @@
     deleteCustomHotspot,
     resetHotspotsToDefault,
     getOpportunityRating,
+    HOTSPOT_CATEGORY_META,
   } from '../data/hotspots';
   import Icon from './Icon.svelte';
 
@@ -79,10 +80,11 @@
     const newHotspot = createSchoolHotspot(config);
     saveCustomHotspot(newHotspot);
     onHotspotsUpdated();
+    const scoreSuffix = session?.role === 'vendor' ? ` (Score: ${newHotspot.opportunityScore}/100)` : '';
     showToast(
       language === 'tl'
-        ? `Na-save ang skedyul ng ${config.schoolName}! (Score: ${newHotspot.opportunityScore}/100)`
-        : `Saved dismissal schedule for ${config.schoolName}! (Score: ${newHotspot.opportunityScore}/100)`
+        ? `Na-save ang skedyul ng ${config.schoolName}!${scoreSuffix}`
+        : `Saved dismissal schedule for ${config.schoolName}!${scoreSuffix}`
     );
 
     // Reset fields
@@ -114,10 +116,11 @@
     const newHotspot = createCommunityEventHotspot(config);
     saveCustomHotspot(newHotspot);
     onHotspotsUpdated();
+    const scoreSuffix = session?.role === 'vendor' ? ` (Score: ${newHotspot.opportunityScore}/100)` : '';
     showToast(
       language === 'tl'
-        ? `Na-save ang event: ${config.title}! (Score: ${newHotspot.opportunityScore}/100)`
-        : `Saved community event: ${config.title}! (Score: ${newHotspot.opportunityScore}/100)`
+        ? `Na-save ang event: ${config.title}!${scoreSuffix}`
+        : `Saved community event: ${config.title}!${scoreSuffix}`
     );
 
     // Reset fields
@@ -635,14 +638,23 @@
                 }`}
               >
                 <div class="flex items-center gap-3.5 min-w-0 flex-1">
-                  <div class="w-22 shrink-0 flex flex-col items-start justify-center pr-3 border-r border-[#EAE4D9] dark:border-[#3D2717]">
-                    <span class={`text-sm font-black uppercase tracking-tight leading-none ${ratingMeta.textClass}`}>
-                      {ratingMeta.rating}
-                    </span>
-                    <span class={`text-xs font-extrabold mt-1 leading-none ${ratingMeta.textClass}`}>
-                      {hotspot.opportunityScore}/100
-                    </span>
-                  </div>
+                  {#if session?.role === 'vendor'}
+                    <div class="w-22 shrink-0 flex flex-col items-start justify-center pr-3 border-r border-[#EAE4D9] dark:border-[#3D2717]">
+                      <span class={`text-sm font-black uppercase tracking-tight leading-none ${ratingMeta.textClass}`}>
+                        {ratingMeta.rating}
+                      </span>
+                      <span class={`text-xs font-extrabold mt-1 leading-none ${ratingMeta.textClass}`}>
+                        {hotspot.opportunityScore}/100
+                      </span>
+                    </div>
+                  {:else}
+                    {@const catMeta = HOTSPOT_CATEGORY_META[hotspot.category] || HOTSPOT_CATEGORY_META.barangay}
+                    <div class={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${
+                      isDarkMode ? 'bg-[#352317] border-[#3D2717] text-[#F59E0B]' : 'bg-[#FAF7F2] border-[#EAE4D9] text-[#4A2E1B]'
+                    }`}>
+                      <Icon name={catMeta.icon} size={18} />
+                    </div>
+                  {/if}
 
                   <div class="min-w-0 flex-1">
                     <h4 class={`text-xs sm:text-sm font-bold truncate ${
