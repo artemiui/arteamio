@@ -1,3 +1,5 @@
+<img width="1280" height="640" alt="pwesto" src="https://github.com/user-attachments/assets/c72fdcca-9a78-4b67-ac48-77cf5bf9a4ab" />
+
 # Pwesto
 
 Hyperlocal spatial intelligence and real-time vendor tracking platform for street food vendors, pop-up carts, and neighborhood buyers.
