@@ -174,7 +174,12 @@
     saveSessionAndNavigate(newSession, 'map');
   }
 
-  function handleConfirmVendor(product: string, productType: ProductType, photoUrl?: string) {
+  function handleConfirmVendor(
+    product: string,
+    productType: ProductType,
+    photoUrl?: string,
+    customLocation?: { lat: number; lng: number; name: string }
+  ) {
     const fallbackLat = 14.6091; // España / Manila default
     const fallbackLng = 120.9898;
 
@@ -190,6 +195,12 @@
       };
       showVendorPrompt = false;
       saveSessionAndNavigate(newSession, 'map');
+    }
+
+    // If vendor explicitly chose a base neighborhood
+    if (customLocation) {
+      createVendorSession(customLocation.lat, customLocation.lng, customLocation.name);
+      return;
     }
 
     // Try real GPS first, fall back to default Manila coords

@@ -97,6 +97,24 @@ export interface ViabilityResult {
   peakHoursEn: string;
 }
 
+
+export interface RecommendedZone {
+  id: string;
+  name: string;
+  nameTl: string;
+  lat: number;
+  lng: number;
+  score: number;
+  matchPercentage: number;
+  distanceM: number;
+  peakHoursTl: string;
+  peakHoursEn: string;
+  rationaleTl: string;
+  rationaleEn: string;
+  competitorCount: number;
+  estimatedCrowd: string;
+}
+
 export type DemandHotspotCategory = 'school' | 'barangay' | 'basketball' | 'commuter';
 
 export type DemandPotentialLevel = 'high' | 'medium' | 'low';

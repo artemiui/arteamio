@@ -3,13 +3,21 @@
   import Icon from './Icon.svelte';
 
   export let language: Language = 'tl';
-  export let onConfirmVendor: (product: string, productType: ProductType, photoUrl?: string) => void;
+  export let onConfirmVendor: (product: string, productType: ProductType, photoUrl?: string, customLocation?: { lat: number; lng: number; name: string }) => void;
   export let onBack: () => void;
 
   let selectedType: ProductType = 'taho';
   let otherProductName: string = '';
   let uploadedPhotoPreview: string | null = null;
   let isCameraActive: boolean = false;
+  let selectedBaseId: string = 'gps';
+  const BASE_PRESETS = [
+    { id: 'espana', label: 'España / UST', icon: '🏫', lat: 14.6091, lng: 120.9898, name: 'España / UST & Sampaloc' },
+    { id: 'welcome', label: 'Welcome Rotonda', icon: '🔄', lat: 14.6177, lng: 121.0006, name: 'Welcome Rotonda, QC' },
+    { id: 'cubao', label: 'Cubao', icon: '🏢', lat: 14.6200, lng: 121.0530, name: 'Cubao (LRT-2 / MRT-3)' },
+    { id: 'recto', label: 'Recto', icon: '🚆', lat: 14.6054, lng: 120.9822, name: 'Recto / Doroteo Jose' },
+  ];
+
 
   const PRODUCT_OPTIONS: { id: ProductType; label: string; icon: string }[] = [
     { id: 'taho', label: 'Taho', icon: 'bowl' },
@@ -66,7 +74,14 @@
     if (selectedType === 'balut') finalProductName = 'Balut';
     if (selectedType === 'other') finalProductName = otherProductName.trim() || 'Paninda';
 
-    onConfirmVendor(finalProductName, selectedType, uploadedPhotoPreview || undefined);
+    let customLoc: { lat: number; lng: number; name: string } | undefined = undefined;
+    if (selectedBaseId !== 'gps') {
+      const found = BASE_PRESETS.find((p) => p.id === selectedBaseId);
+      if (found) {
+        customLoc = { lat: found.lat, lng: found.lng, name: found.name };
+      }
+    }
+    onConfirmVendor(finalProductName, selectedType, uploadedPhotoPreview || undefined, customLoc);
   }
 </script>
 
@@ -83,6 +98,42 @@
           ? 'Piliin ang paninda at mag-upload ng litrato ng iyong kaldero o kariton.'
           : 'Choose your product and upload a quick photo of your stall or kaldero.'}
       </p>
+    </div>
+
+    <!-- Base / Starting Area Selector -->
+    <div class="space-y-2">
+      <span class="text-xs font-bold uppercase tracking-wider text-[#796658] block">
+        {language === 'tl' ? 'Saan Ka Magmumula / Taga-Saan Ka?' : 'Starting Base / Location:'}
+      </span>
+      <div class="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
+        <button
+          type="button"
+          on:click={() => (selectedBaseId = 'gps')}
+          class={`p-2.5 rounded-2xl border text-xs font-bold flex flex-col items-center justify-center gap-1 transition cursor-pointer ${
+            selectedBaseId === 'gps'
+              ? 'bg-[#4A2E1B] text-[#FAF7F2] border-[#4A2E1B] shadow-xs'
+              : 'bg-[#FAF7F2] text-[#4A2E1B] border-[#EAE4D9] hover:bg-white'
+          }`}
+        >
+          <span class="text-base">📍</span>
+          <span class="text-[11px] font-bold">GPS</span>
+        </button>
+
+        {#each BASE_PRESETS as preset}
+          <button
+            type="button"
+            on:click={() => (selectedBaseId = preset.id)}
+            class={`p-2.5 rounded-2xl border text-xs font-bold flex flex-col items-center justify-center gap-1 transition cursor-pointer truncate ${
+              selectedBaseId === preset.id
+                ? 'bg-[#4A2E1B] text-[#FAF7F2] border-[#4A2E1B] shadow-xs'
+                : 'bg-[#FAF7F2] text-[#4A2E1B] border-[#EAE4D9] hover:bg-white'
+            }`}
+          >
+            <span class="text-base">{preset.icon}</span>
+            <span class="text-[11px] font-bold truncate max-w-full">{preset.label.split('/')[0]}</span>
+          </button>
+        {/each}
+      </div>
     </div>
 
     <!-- Product Options ("Binebenta") -->

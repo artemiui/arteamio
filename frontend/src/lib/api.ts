@@ -107,6 +107,22 @@ export async function updateVendorLocationOnBackend(
   }
 }
 
+/** Update vendor status on backend ('live' | 'stopped' | 'sold_out'). */
+export async function updateVendorStatusOnBackend(
+  vendorId: string,
+  status: 'live' | 'stopped' | 'sold_out'
+): Promise<boolean> {
+  try {
+    const res = await fetch(`${API_BASE}/vendors/${vendorId}/status?status=${status}`, {
+      method: 'PATCH',
+    });
+    return res.ok;
+  } catch (err) {
+    console.warn('Failed to update vendor status on backend:', err);
+    return false;
+  }
+}
+
 /** Evaluate Huff Gravity Model viability on the backend. */
 export async function evaluateViabilityOnBackend(
   lat: number,

@@ -3,7 +3,9 @@
   import type { DemandHotspot, DemandHotspotCategory, Language, ProductType, TaggedVendor, UserSession } from '../types';
   import { BUSINESS_ARCHETYPES, generateAnchorsAround, generateCompetitorsAround, PRODUCT_LEGEND } from '../data/spots';
   import { getAllDemandHotspots, getDemandHotspotsForViewport, getOpportunityRating, HOTSPOT_CATEGORY_META, HOTSPOT_LEVEL_META } from '../data/hotspots';
-  import { evaluateLocationViability, calculateDistanceM } from '../gravity';
+  import { evaluateLocationViability, calculateDistanceM, getRecommendedZones } from '../gravity';
+  import { updateVendorStatusOnBackend } from '../api';
+  import type { RecommendedZone } from '../types';
   import Logo from './Logo.svelte';
   import HotspotDetailCard from './HotspotDetailCard.svelte';
   import HotspotConfigModal from './HotspotConfigModal.svelte';
@@ -116,6 +118,43 @@
 
   // Notification chime alert state
   let alertToast: string | null = null;
+
+  // Heatmap Layer state & toggle (default active)
+  let isHeatmapActive: boolean = true;
+  let heatmapCircles: L.Circle[] = [];
+
+  // Wider-Scope Smart Zone Recommendations (Huff's Gravity Model)
+  $: recommendedZones = (session.role === 'vendor')
+    ? getRecommendedZones(session.lat, session.lng, session.product || 'taho', 3500)
+    : [];
+
+  // Vendor Ubos Na & Zone Suggestions UI states
+  let showSoldOutConfirmModal: boolean = false;
+  let showSoldOutCelebration: boolean = false;
+  let showZoneSuggestionsDrawer: boolean = false;
+
+  function toggleHeatmap() {
+    isHeatmapActive = !isHeatmapActive;
+    renderMapElements();
+  }
+
+  async function handleConfirmSoldOut() {
+    vendorStatus = 'sold_out';
+    showSoldOutConfirmModal = false;
+    showSoldOutCelebration = true;
+    const vendorId = localStorage.getItem('pwesto_vendor_id') || 'v-current';
+    await updateVendorStatusOnBackend(vendorId, 'sold_out');
+    renderMapElements();
+  }
+
+  async function handleResumeLive() {
+    vendorStatus = 'live';
+    showSoldOutCelebration = false;
+    const vendorId = localStorage.getItem('pwesto_vendor_id') || 'v-current';
+    await updateVendorStatusOnBackend(vendorId, 'live');
+    renderMapElements();
+  }
+
 
   onMount(() => {
     if (!mapContainer) return;
@@ -277,7 +316,7 @@
     }
   }
 
-  function handleTargetLocation(lat: number, lng: number) {
+  function handleTargetLocation(lat: number, lng: number, name?: string) {
     if (targetedRoute && targetedRoute.lat === lat && targetedRoute.lng === lng) {
       handleClearRoute();
       return;
@@ -289,7 +328,7 @@
     targetedRoute = {
       lat,
       lng,
-      name: selectedHotspot ? selectedHotspot.name : 'Target Hotspot',
+      name: name || (selectedHotspot ? selectedHotspot.name : 'Target Hotspot'),
     };
     targetedRouteDistanceM = dist;
     targetedRouteEtaMins = eta;
@@ -334,7 +373,7 @@
     ? demandHotspots
     : demandHotspots.filter((h) => h.category === activeHotspotCategory);
 
-  $: if (map && (filteredVendors || session || isDarkMode || isHotspotsVisible || activeHotspotCategory || demandHotspots || selectedHotspot || recommendedViabilitySpot || targetedRoute)) {
+  $: if (map && (filteredVendors || session || isDarkMode || isHotspotsVisible || activeHotspotCategory || demandHotspots || selectedHotspot || recommendedViabilitySpot || targetedRoute || isHeatmapActive)) {
     renderMapElements();
   }
 
@@ -362,6 +401,10 @@
       map.removeLayer(targetedRouteMarker);
       targetedRouteMarker = null;
     }
+
+    // Clear old heatmap circles
+    heatmapCircles.forEach((c) => map?.removeLayer(c));
+    heatmapCircles = [];
 
     // 1. Render User's Location Pin (Google Maps Blue Dot / Pin)
     if (userMarker) map.removeLayer(userMarker);
@@ -404,9 +447,11 @@
     // 3. Render Tagged Streetfood Vendors
     filteredVendors.forEach((vendor) => {
       const isSelected = selectedVendor?.id === vendor.id;
+      const isSoldOut = vendor.status === 'sold_out';
       const markerHtml = `
-        <div class="relative flex items-center justify-center cursor-pointer transition-transform hover:scale-110 active:scale-95">
+        <div class="relative flex items-center justify-center cursor-pointer transition-transform hover:scale-110 active:scale-95 ${isSoldOut ? 'opacity-60 grayscale' : ''}">
           ${vendor.status === 'live' ? '<span class="absolute w-10 h-10 rounded-full bg-[#D97706]/30 animate-pulse"></span>' : ''}
+          ${isSoldOut ? '<span class="absolute -top-2 -right-2 px-1.5 py-0.5 rounded-full bg-red-600 text-white text-[9px] font-black uppercase tracking-tighter shadow-md">UBOS</span>' : ''}
           <div class="w-10 h-10 rounded-2xl ${
             isDarkMode ? 'bg-[#271A10] border-2 border-[#3D2717]' : 'bg-white border-2 border-[#EAE4D9]'
           } ${
@@ -560,6 +605,43 @@
       `);
     }
 
+    // 5b. Render Heatmap Density Layer (if active)
+    if (isHeatmapActive) {
+      const heatClusters: { lat: number; lng: number; intensity: number }[] = [];
+      anchors.forEach((a) => {
+        heatClusters.push({ lat: a.lat, lng: a.lng, intensity: Math.round(a.weight * 80) });
+      });
+      demandHotspots.forEach((h) => {
+        heatClusters.push({ lat: h.lat, lng: h.lng, intensity: h.opportunityScore });
+      });
+
+      heatClusters.forEach((hc) => {
+        const isHigh = hc.intensity >= 80;
+        const isMed = hc.intensity >= 50 && hc.intensity < 80;
+        const color = isHigh ? '#EF4444' : (isMed ? '#F59E0B' : '#EAB308');
+        const radius = isHigh ? 160 : (isMed ? 130 : 95);
+        const opacity = isHigh ? 0.30 : (isMed ? 0.22 : 0.15);
+
+        const circle = L.circle([hc.lat, hc.lng], {
+          radius,
+          color,
+          fillColor: color,
+          fillOpacity: opacity,
+          stroke: false,
+        }).addTo(map!);
+
+        const outerAura = L.circle([hc.lat, hc.lng], {
+          radius: radius * 1.45,
+          color,
+          fillColor: color,
+          fillOpacity: opacity * 0.45,
+          stroke: false,
+        }).addTo(map!);
+
+        heatmapCircles.push(circle, outerAura);
+      });
+    }
+
     // 6. Draw Active Targeted Navigation Route Line & Destination Waypoint Marker
     if (targetedRoute) {
       fetchAndDrawWalkingRoute(session.lat, session.lng, targetedRoute.lat, targetedRoute.lng);
@@ -685,7 +767,7 @@
           <button
             type="button"
             on:click={() => (onNavigateToVendor ? onNavigateToVendor() : null)}
-            class={`px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 text-xs font-black cursor-pointer shadow-xs active:scale-95 ${
+            class={`px-2.5 py-1.5 rounded-xl transition flex items-center gap-1 text-xs font-black cursor-pointer shadow-xs active:scale-95 ${
               isDarkMode
                 ? 'bg-[#352317] hover:bg-[#4A2E1B] text-[#F59E0B]'
                 : 'bg-[#FEF3C7] hover:bg-[#FDE68A] text-[#D97706]'
@@ -693,8 +775,44 @@
             title={language === 'tl' ? 'Pumunta sa Dashboard ng Tindahan' : 'Vendor Dashboard'}
           >
             <Icon name="cart" size={14} />
-            <span>{language === 'tl' ? 'Tindahan' : 'Stall'}</span>
+            <span class="hidden sm:inline">{language === 'tl' ? 'Tindahan' : 'Stall'}</span>
           </button>
+
+          <!-- 1-Tap Ubos Na Quick Action -->
+          {#if vendorStatus === 'live'}
+            <button
+              type="button"
+              on:click={() => (showSoldOutConfirmModal = true)}
+              class="px-2.5 py-1.5 rounded-xl bg-red-500/15 hover:bg-red-500/25 text-red-600 dark:text-red-400 font-black text-xs flex items-center gap-1 transition cursor-pointer shadow-xs active:scale-95"
+              title={language === 'tl' ? 'Pindutin kung Ubos na ang Paninda' : 'Click if Sold Out'}
+            >
+              <span>🔴</span>
+              <span>{language === 'tl' ? 'Ubos Na!' : 'Sold Out!'}</span>
+            </button>
+          {:else}
+            <button
+              type="button"
+              on:click={handleResumeLive}
+              class="px-2.5 py-1.5 rounded-xl bg-green-500/15 hover:bg-green-500/25 text-green-600 dark:text-green-400 font-black text-xs flex items-center gap-1 transition cursor-pointer shadow-xs active:scale-95"
+              title={language === 'tl' ? 'Ibalik sa Live' : 'Resume Live'}
+            >
+              <span>🟢</span>
+              <span>{language === 'tl' ? 'Magtinda Ulit' : 'Resume Live'}</span>
+            </button>
+          {/if}
+
+          <!-- Smart Zone Matchmaker Button -->
+          {#if recommendedZones.length > 0}
+            <button
+              type="button"
+              on:click={() => (showZoneSuggestionsDrawer = true)}
+              class="px-2.5 py-1.5 rounded-xl bg-[#D97706]/15 hover:bg-[#D97706]/25 text-[#D97706] font-black text-xs flex items-center gap-1 transition cursor-pointer shadow-xs active:scale-95"
+              title={language === 'tl' ? 'Tingnan ang 3 Inirerekomendang Pwesto' : 'View Top 3 Recommended Spots'}
+            >
+              <span>🎯</span>
+              <span class="hidden md:inline">{language === 'tl' ? 'Magandang Pwesto' : 'Best Spots'}</span>
+            </button>
+          {/if}
         {/if}
       </div>
 
@@ -1693,6 +1811,21 @@
 
     <div class={`w-6 h-[1px] my-0.5 opacity-20 ${isDarkMode ? 'bg-white' : 'bg-black'}`}></div>
 
+    <!-- Heatmap Toggle (Official Map Logo per User Design) -->
+    <button
+      type="button"
+      on:click={toggleHeatmap}
+      class={`w-10 h-10 rounded-xl flex items-center justify-center transition cursor-pointer active:scale-95 ${
+        isHeatmapActive
+          ? (isDarkMode ? 'bg-[#F59E0B]/20 text-[#F59E0B] ring-2 ring-[#F59E0B]/50' : 'bg-[#FEF3C7] text-[#D97706] ring-2 ring-[#D97706]/50')
+          : (isDarkMode ? 'hover:bg-[#352317] text-[#FAF7F2]' : 'hover:bg-[#FAF7F2] text-[#4A2E1B]')
+      }`}
+      title={language === 'tl' ? (isHeatmapActive ? 'Itago ang Heatmap ng Tao' : 'Ipakita ang Heatmap ng Tao') : (isHeatmapActive ? 'Hide Traffic Heatmap' : 'Show Traffic Heatmap')}
+      aria-label="Toggle Traffic Heatmap"
+    >
+      <Icon name="map" size={18} />
+    </button>
+
     <!-- Center to Location -->
     <button
       type="button"
@@ -1706,6 +1839,201 @@
       <Icon name="location-center" size={18} />
     </button>
   </div>
+
+  <!-- FLOATING HEATMAP MICRO-LEGEND (BOTTOM LEFT) -->
+  {#if isHeatmapActive}
+    <div class={`absolute bottom-6 left-4 z-20 flex items-center gap-2 px-3 py-1.5 rounded-2xl shadow-lg border backdrop-blur-md text-[11px] font-bold pointer-events-auto animate-fade-in ${
+      isDarkMode ? 'bg-[#271A10]/95 border-[#3D2717] text-[#FAF7F2]' : 'bg-white/95 border-[#EAE4D9] text-[#4A2E1B]'
+    }`}>
+      <span class="text-xs">🗺️</span>
+      <span class="text-[#D97706] uppercase tracking-wider">{language === 'tl' ? 'Dagsa ng Tao:' : 'Foot Traffic:'}</span>
+      <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-red-500 inline-block"></span>{language === 'tl' ? 'Dagsa' : 'High'}</span>
+      <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-amber-500 inline-block"></span>{language === 'tl' ? 'Katamtaman' : 'Med'}</span>
+      <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-yellow-400 inline-block"></span>{language === 'tl' ? 'Mababa' : 'Low'}</span>
+    </div>
+  {/if}
+
+  <!-- SMART ZONE MATCHMAKER DRAWER (HUFF'S GRAVITY MODEL) -->
+  {#if showZoneSuggestionsDrawer && session.role === 'vendor'}
+    <div class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-xs animate-fade-in pointer-events-auto">
+      <div class={`w-full max-w-lg max-h-[85vh] rounded-t-[32px] sm:rounded-[32px] border p-5 sm:p-6 space-y-4 shadow-2xl overflow-y-auto ${
+        isDarkMode ? 'bg-[#271A10] border-[#3D2717] text-[#FAF7F2]' : 'bg-white border-[#EAE4D9] text-[#4A2E1B]'
+      }`}>
+        <div class="flex items-center justify-between pb-2 border-b border-black/5 dark:border-white/10">
+          <div class="flex items-center gap-2">
+            <span class="text-2xl">🎯</span>
+            <div>
+              <h3 class="text-base sm:text-lg font-black">{language === 'tl' ? 'Mga Bagay na Pwesto Para Sa Iyo' : 'Smart Stall Matchmaker'}</h3>
+              <p class="text-[11px] text-[#796658] dark:text-[#D6C7B2] font-semibold">
+                {language === 'tl' ? `Batay sa Huff Gravity Model para sa ${session.product || 'paninda'} mo` : `Powered by Huff Gravity Model for your ${session.product || 'items'}`}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            on:click={() => (showZoneSuggestionsDrawer = false)}
+            class="w-8 h-8 rounded-full flex items-center justify-center bg-black/5 dark:bg-white/10 text-xs font-black cursor-pointer hover:bg-black/10 transition"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div class="space-y-3">
+          {#each recommendedZones as zone, idx}
+            <div class={`p-4 rounded-2xl border space-y-2.5 transition-all hover:border-[#D97706]/50 ${
+              isDarkMode ? 'bg-[#1A120B] border-[#3D2717]' : 'bg-[#FAF7F2] border-[#EAE4D9]'
+            }`}>
+              <div class="flex items-start justify-between gap-2">
+                <div>
+                  <div class="flex items-center gap-1.5">
+                    <span class="text-xs font-black px-2 py-0.5 rounded-full bg-[#D97706] text-white">#{idx + 1}</span>
+                    <h4 class="text-sm font-black text-[#4A2E1B] dark:text-[#FAF7F2]">{zone.nameTl || zone.name}</h4>
+                  </div>
+                  <p class="text-xs font-bold text-[#D97706] mt-0.5">
+                    ~{zone.distanceM}m • ~{Math.max(1, Math.round(zone.distanceM / 67))} {language === 'tl' ? 'min lakad mula rito' : 'min walk'}
+                  </p>
+                </div>
+                <div class="px-2.5 py-1 rounded-xl bg-green-500/15 border border-green-500/30 text-green-600 dark:text-green-400 text-xs font-black shrink-0 text-center">
+                  ⭐ {zone.matchPercentage}% {language === 'tl' ? 'Tugma' : 'Match'}
+                </div>
+              </div>
+
+              <div class="text-[11px] space-y-1 text-[#796658] dark:text-[#D6C7B2]">
+                <div class="flex items-center gap-1.5 font-medium">
+                  <span>🕒</span>
+                  <span><strong>{language === 'tl' ? 'Benta Window:' : 'Peak Time:'}</strong> {zone.peakHoursTl}</span>
+                </div>
+                <div class="flex items-center gap-1.5 font-medium">
+                  <span>👥</span>
+                  <span><strong>{language === 'tl' ? 'Dagsa ng Tao:' : 'Crowd:'}</strong> {zone.estimatedCrowd}</span>
+                </div>
+                <div class="p-2 rounded-xl bg-black/5 dark:bg-white/5 font-semibold text-[#4A2E1B] dark:text-[#FAF7F2]">
+                  💡 {language === 'tl' ? zone.rationaleTl : zone.rationaleEn}
+                </div>
+              </div>
+
+              <button
+                type="button"
+                on:click={() => {
+                  handleTargetLocation(zone.lat, zone.lng, zone.nameTl);
+                  showZoneSuggestionsDrawer = false;
+                }}
+                class="w-full py-2.5 px-4 rounded-xl bg-[#D97706] hover:bg-[#B45309] text-white text-xs font-black transition cursor-pointer flex items-center justify-center gap-1.5 shadow-sm active:scale-98"
+              >
+                <span>🚶‍♂️</span>
+                <span>{language === 'tl' ? 'Ituro ang Ruta Papunta Dito' : 'Guide Route to This Spot'}</span>
+                <span>→</span>
+              </button>
+            </div>
+          {/each}
+        </div>
+      </div>
+    </div>
+  {/if}
+
+  <!-- UBOS NA CONFIRMATION MODAL -->
+  {#if showSoldOutConfirmModal}
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in pointer-events-auto">
+      <div class={`w-full max-w-sm rounded-[32px] border p-6 text-center space-y-4 shadow-2xl ${
+        isDarkMode ? 'bg-[#271A10] border-[#3D2717] text-[#FAF7F2]' : 'bg-white border-[#EAE4D9] text-[#4A2E1B]'
+      }`}>
+        <div class="w-16 h-16 rounded-full bg-red-500/15 text-red-500 text-3xl mx-auto flex items-center justify-center">
+          🔴
+        </div>
+        <div>
+          <h3 class="text-xl font-black">
+            {language === 'tl' ? 'Ubos na ba ang Paninda Mo Kuya?' : 'Are you Sold Out?'}
+          </h3>
+          <p class="text-xs text-[#796658] dark:text-[#D6C7B2] font-medium mt-1">
+            {language === 'tl'
+              ? 'Makikita ng mga kalapit na mamimili na naubos na ang iyong paninda para hindi na sila mag-abang sa kalsada.'
+              : 'Nearby customers will see that your cart is sold out so they will not wait in the street.'}
+          </p>
+        </div>
+
+        <div class="space-y-2 pt-2">
+          <button
+            type="button"
+            on:click={handleConfirmSoldOut}
+            class="w-full py-3.5 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-black text-sm shadow-md transition cursor-pointer active:scale-98"
+          >
+            ✓ {language === 'tl' ? 'Oo, Ubos na Lahat!' : 'Yes, Completely Sold Out!'}
+          </button>
+          <button
+            type="button"
+            on:click={() => (showSoldOutConfirmModal = false)}
+            class="w-full py-3 rounded-2xl border border-black/10 dark:border-white/10 text-xs font-bold transition cursor-pointer hover:bg-black/5 dark:hover:bg-white/5"
+          >
+            {language === 'tl' ? 'Kanselahin (Magtitinda Pa)' : 'Cancel (Keep Selling)'}
+          </button>
+        </div>
+      </div>
+    </div>
+  {/if}
+
+  <!-- UBOS NA CELEBRATION SUMMARY MODAL -->
+  {#if showSoldOutCelebration}
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in pointer-events-auto">
+      <div class={`w-full max-w-sm rounded-[32px] border p-6 text-center space-y-4 shadow-2xl ${
+        isDarkMode ? 'bg-[#271A10] border-[#3D2717] text-[#FAF7F2]' : 'bg-white border-[#EAE4D9] text-[#4A2E1B]'
+      }`}>
+        <div class="w-16 h-16 rounded-full bg-amber-500/15 text-3xl mx-auto flex items-center justify-center animate-bounce">
+          🎉
+        </div>
+        <div>
+          <h3 class="text-xl font-black text-[#D97706]">
+            {language === 'tl' ? 'Saludo sa Sipag Mo, Kuya!' : 'Congratulations Kuya!'}
+          </h3>
+          <h4 class="text-base font-extrabold mt-0.5">
+            {language === 'tl' ? 'Ubos na ang Iyong Paninda!' : 'All Items Sold Out!'}
+          </h4>
+          <p class="text-xs text-[#796658] dark:text-[#D6C7B2] font-medium mt-1">
+            {language === 'tl'
+              ? `Matagumpay mong naibenta ang iyong ${session.product || 'paninda'}. Maraming salamat sa pagpapakain sa komunidad!`
+              : `You have successfully sold out your ${session.product || 'items'} today. Thank you for serving the community!`}
+          </p>
+        </div>
+
+        <div class={`p-3.5 rounded-2xl text-left space-y-1.5 text-xs ${
+          isDarkMode ? 'bg-[#1A120B]' : 'bg-[#FAF7F2]'
+        }`}>
+          <div class="flex justify-between">
+            <span class="text-[#796658] dark:text-[#D6C7B2]">{language === 'tl' ? 'Paninda:' : 'Item Sold:'}</span>
+            <span class="font-bold">{session.product || 'Taho'}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-[#796658] dark:text-[#D6C7B2]">{language === 'tl' ? 'Mamimiling Naabutan:' : 'Neighbors Reached:'}</span>
+            <span class="font-bold text-green-500">~{waitingAudienceCount} mamimili</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-[#796658] dark:text-[#D6C7B2]">{language === 'tl' ? 'Lokasyon:' : 'Area:'}</span>
+            <span class="font-bold truncate max-w-[160px]">{session.locationName}</span>
+          </div>
+        </div>
+
+        <div class="space-y-2 pt-2">
+          <button
+            type="button"
+            on:click={() => {
+              showSoldOutCelebration = false;
+              onSwitchRole();
+            }}
+            class="w-full py-3.5 rounded-2xl bg-[#4A2E1B] hover:bg-[#352317] text-[#FAF7F2] font-black text-sm shadow-md transition cursor-pointer active:scale-98 flex items-center justify-center gap-1.5"
+          >
+            <span>🏠</span>
+            <span>{language === 'tl' ? 'Magpahinga Na (Tapusin ang Araw)' : 'Rest for the Day'}</span>
+          </button>
+          <button
+            type="button"
+            on:click={handleResumeLive}
+            class="w-full py-2.5 rounded-2xl text-xs font-bold text-[#D97706] hover:bg-[#FEF3C7] dark:hover:bg-[#352317] transition cursor-pointer"
+          >
+            🔄 {language === 'tl' ? 'May Karagdagang Paninda (Magtinda Ulit)' : 'More Batches Arrived (Resume)'}
+          </button>
+        </div>
+      </div>
+    </div>
+  {/if}
 
   <!-- CONFIGURATION MODAL (SCHOOL SCHEDULES & COMMUNITY EVENTS) -->
   {#if showHotspotConfigModal}
