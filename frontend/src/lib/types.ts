@@ -12,6 +12,10 @@ export interface UserSession {
   lat: number;
   lng: number;
   product?: string;
+  productType?: ProductType;
+  quantity?: number;
+  quantityUnit?: string;
+  acceptsGcash?: boolean;
   verifiedPhoto?: string;
   createdAt: string;
 }
@@ -39,6 +43,9 @@ export interface TaggedVendor {
   etaMins: number;
   status: 'live' | 'stopped' | 'sold_out';
   verifiedPhoto?: string;
+  acceptsGcash?: boolean;
+  quantity?: number;
+  quantityUnit?: string;
 }
 
 export interface LiveVendor {

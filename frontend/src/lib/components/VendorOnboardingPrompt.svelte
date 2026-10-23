@@ -3,11 +3,19 @@
   import Icon from './Icon.svelte';
 
   export let language: Language = 'tl';
-  export let onConfirmVendor: (product: string, productType: ProductType, photoUrl?: string, customLocation?: { lat: number; lng: number; name: string }) => void;
+  export let onConfirmVendor: (
+    product: string,
+    productType: ProductType,
+    photoUrl?: string,
+    customLocation?: { lat: number; lng: number; name: string },
+    extraDetails?: { quantity: number; quantityUnit: string; acceptsGcash: boolean }
+  ) => void;
   export let onBack: () => void;
 
   let selectedType: ProductType = 'taho';
   let otherProductName: string = '';
+  let productQuantity: number = 50;
+  let acceptsGcash: boolean = true;
   let uploadedPhotoPreview: string | null = null;
   let isCameraActive: boolean = false;
   let selectedBaseId: string = 'gps';
@@ -18,13 +26,35 @@
     { id: 'recto', label: 'Recto', icon: '🚆', lat: 14.6054, lng: 120.9822, name: 'Recto / Doroteo Jose' },
   ];
 
-
-  const PRODUCT_OPTIONS: { id: ProductType; label: string; icon: string }[] = [
-    { id: 'taho', label: 'Taho', icon: 'bowl' },
-    { id: 'siomai', label: 'Siomai', icon: 'siomai' },
-    { id: 'balut', label: 'Balut', icon: 'egg' },
-    { id: 'other', label: 'Other', icon: 'star' },
+  const PRODUCT_OPTIONS: {
+    id: ProductType;
+    label: string;
+    icon: string;
+    unitTl: string;
+    unitEn: string;
+    defaultQty: number;
+  }[] = [
+    { id: 'taho', label: 'Taho', icon: 'bowl', unitTl: 'baso (cups)', unitEn: 'cups', defaultQty: 50 },
+    { id: 'siomai', label: 'Siomai', icon: 'siomai', unitTl: 'piraso (pieces)', unitEn: 'pieces', defaultQty: 100 },
+    { id: 'balut', label: 'Balut', icon: 'egg', unitTl: 'piraso (pieces)', unitEn: 'pieces', defaultQty: 40 },
+    { id: 'other', label: 'Other', icon: 'star', unitTl: 'order / piraso', unitEn: 'servings / pcs', defaultQty: 30 },
   ];
+
+  $: currentProductMeta = PRODUCT_OPTIONS.find((p) => p.id === selectedType) || PRODUCT_OPTIONS[0];
+  $: currentUnitLabel = language === 'tl' ? currentProductMeta.unitTl : currentProductMeta.unitEn;
+
+  function handleSelectProduct(item: typeof PRODUCT_OPTIONS[number]) {
+    const prevMeta = PRODUCT_OPTIONS.find((p) => p.id === selectedType);
+    selectedType = item.id;
+    // Update to sensible default quantity when switching product if still on previous default
+    if (!prevMeta || productQuantity === prevMeta.defaultQty) {
+      productQuantity = item.defaultQty;
+    }
+  }
+
+  function adjustQuantity(delta: number) {
+    productQuantity = Math.max(1, (Number(productQuantity) || 0) + delta);
+  }
 
   /** Compress an image file via canvas to stay under localStorage quota. */
   function compressImage(file: File, maxWidth = 600, quality = 0.7): Promise<string> {
@@ -81,12 +111,17 @@
         customLoc = { lat: found.lat, lng: found.lng, name: found.name };
       }
     }
-    onConfirmVendor(finalProductName, selectedType, uploadedPhotoPreview || undefined, customLoc);
+    const safeQty = Math.max(1, Math.round(Number(productQuantity) || currentProductMeta.defaultQty));
+    onConfirmVendor(finalProductName, selectedType, uploadedPhotoPreview || undefined, customLoc, {
+      quantity: safeQty,
+      quantityUnit: currentUnitLabel,
+      acceptsGcash,
+    });
   }
 </script>
 
 <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#4A2E1B]/60 backdrop-blur-sm animate-fade-in overflow-y-auto">
-  <div class="bg-white w-full max-w-lg rounded-[36px] border border-[#EAE4D9] shadow-2xl p-6 sm:p-8 space-y-6 text-[#4A2E1B] my-auto">
+  <div class="bg-white w-full max-w-lg rounded-[36px] border border-[#EAE4D9] shadow-2xl p-6 sm:p-8 space-y-5 text-[#4A2E1B] my-auto">
     <!-- Header -->
     <div class="text-center space-y-1">
       <Icon name="cart" size={32} />
@@ -145,7 +180,7 @@
         {#each PRODUCT_OPTIONS as item}
           <button
             type="button"
-            on:click={() => (selectedType = item.id)}
+            on:click={() => handleSelectProduct(item)}
             class={`p-3.5 rounded-2xl border-2 font-bold text-sm sm:text-base flex items-center gap-3 transition-all cursor-pointer min-h-[52px] ${
               selectedType === item.id
                 ? 'bg-[#4A2E1B] text-[#FAF7F2] border-[#4A2E1B] shadow-sm'
@@ -168,6 +203,84 @@
           />
         </div>
       {/if}
+    </div>
+
+    <!-- Quantity Input (with automatic unit) & GCash Option (Before Taking a Picture) -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-0.5">
+      <!-- Quantity Input with Auto Unit -->
+      <div class="space-y-1.5">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold uppercase tracking-wider text-[#796658]">
+            {language === 'tl' ? 'Dami ng Paninda:' : 'Quantity to Sell:'}
+          </span>
+          <span class="text-[11px] font-extrabold text-[#D97706] bg-[#FEF3C7] px-2 py-0.5 rounded-full">
+            {currentUnitLabel}
+          </span>
+        </div>
+        <div class="flex items-center gap-1.5 bg-[#FAF7F2] border-2 border-[#EAE4D9] focus-within:border-[#4A2E1B] rounded-2xl p-1.5 min-h-[50px]">
+          <button
+            type="button"
+            on:click={() => adjustQuantity(-5)}
+            class="w-9 h-9 rounded-xl bg-white border border-[#EAE4D9] text-[#4A2E1B] font-black text-base hover:bg-[#F3EDE2] transition cursor-pointer shrink-0 active:scale-95"
+            aria-label="Decrease quantity"
+          >
+            −
+          </button>
+          <div class="flex-1 flex items-center justify-center gap-1.5 min-w-0">
+            <input
+              type="number"
+              min="1"
+              max="9999"
+              bind:value={productQuantity}
+              class="w-16 text-center bg-transparent text-base font-black text-[#4A2E1B] outline-none"
+            />
+            <span class="text-xs font-bold text-[#796658] truncate">
+              {currentUnitLabel.split(' ')[0]}
+            </span>
+          </div>
+          <button
+            type="button"
+            on:click={() => adjustQuantity(5)}
+            class="w-9 h-9 rounded-xl bg-white border border-[#EAE4D9] text-[#4A2E1B] font-black text-base hover:bg-[#F3EDE2] transition cursor-pointer shrink-0 active:scale-95"
+            aria-label="Increase quantity"
+          >
+            +
+          </button>
+        </div>
+      </div>
+
+      <!-- GCash Payment Option -->
+      <div class="space-y-1.5">
+        <span class="text-xs font-bold uppercase tracking-wider text-[#796658] block">
+          {language === 'tl' ? 'Tumatanggap ng GCash?' : 'Accepts GCash?'}
+        </span>
+        <div class="grid grid-cols-2 gap-2 min-h-[50px]">
+          <button
+            type="button"
+            on:click={() => (acceptsGcash = true)}
+            class={`px-3 py-2.5 rounded-2xl border-2 text-xs font-black flex items-center justify-center gap-1.5 transition cursor-pointer ${
+              acceptsGcash
+                ? 'bg-[#007DFE] text-white border-[#007DFE] shadow-xs'
+                : 'bg-[#FAF7F2] text-[#4A2E1B] border-[#EAE4D9] hover:bg-white'
+            }`}
+          >
+            <span>💳</span>
+            <span>{language === 'tl' ? 'Oo (GCash)' : 'Yes (GCash)'}</span>
+          </button>
+          <button
+            type="button"
+            on:click={() => (acceptsGcash = false)}
+            class={`px-3 py-2.5 rounded-2xl border-2 text-xs font-black flex items-center justify-center gap-1.5 transition cursor-pointer ${
+              !acceptsGcash
+                ? 'bg-[#4A2E1B] text-[#FAF7F2] border-[#4A2E1B] shadow-xs'
+                : 'bg-[#FAF7F2] text-[#4A2E1B] border-[#EAE4D9] hover:bg-white'
+            }`}
+          >
+            <span>💵</span>
+            <span>{language === 'tl' ? 'Cash Lang' : 'Cash Only'}</span>
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- Photo Verification (Kaldero / Stall) -->

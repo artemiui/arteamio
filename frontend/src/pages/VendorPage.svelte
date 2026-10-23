@@ -54,15 +54,71 @@
   );
 
   const PRODUCTS = [
-    { name: 'Taho', icon: 'bowl' },
-    { name: 'Siomai', icon: 'siomai' },
-    { name: 'Balut', icon: 'balut' },
-    { name: 'Kape / Merienda', icon: 'star' },
+    { name: 'Taho', icon: 'bowl', unitTl: 'baso (cups)', unitEn: 'cups', defaultQty: 50 },
+    { name: 'Siomai', icon: 'siomai', unitTl: 'piraso (pieces)', unitEn: 'pieces', defaultQty: 100 },
+    { name: 'Balut', icon: 'balut', unitTl: 'piraso (pieces)', unitEn: 'pieces', defaultQty: 40 },
+    { name: 'Kape / Merienda', icon: 'star', unitTl: 'order / piraso', unitEn: 'servings / pcs', defaultQty: 30 },
   ];
 
+  $: currentProductMeta =
+    PRODUCTS.find((p) => activeProduct.toLowerCase().includes(p.name.split(' ')[0].toLowerCase())) || PRODUCTS[0];
+  $: currentUnitLabel = language === 'tl' ? currentProductMeta.unitTl : currentProductMeta.unitEn;
+
+  let productQuantity: number = session.quantity ?? currentProductMeta.defaultQty;
+  let acceptsGcash: boolean = session.acceptsGcash ?? true;
+
+  function persistVendorDetails() {
+    if (typeof window === 'undefined') return;
+    try {
+      const sessionKey = localStorage.getItem('pwesto_session')
+        ? 'pwesto_session'
+        : (localStorage.getItem('pwestoradar_session') ? 'pwestoradar_session' : 'pwesto_session');
+      const raw = localStorage.getItem(sessionKey);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        parsed.product = activeProduct;
+        parsed.quantity = productQuantity;
+        parsed.quantityUnit = currentUnitLabel;
+        parsed.acceptsGcash = acceptsGcash;
+        localStorage.setItem(sessionKey, JSON.stringify(parsed));
+      }
+    } catch (err) {
+      console.error('Failed to update vendor details in session storage', err);
+    }
+  }
+
   function setProduct(prod: string) {
+    const prevMeta = PRODUCTS.find((p) => activeProduct.toLowerCase().includes(p.name.split(' ')[0].toLowerCase()));
+    const nextMeta = PRODUCTS.find((p) => prod.toLowerCase().includes(p.name.split(' ')[0].toLowerCase()));
     activeProduct = prod;
+    if (nextMeta && (!prevMeta || productQuantity === prevMeta.defaultQty)) {
+      productQuantity = nextMeta.defaultQty;
+    }
+    session.product = prod;
+    session.quantity = productQuantity;
+    session.quantityUnit = nextMeta ? (language === 'tl' ? nextMeta.unitTl : nextMeta.unitEn) : currentUnitLabel;
     onUpdateProduct(prod);
+    persistVendorDetails();
+  }
+
+  function adjustQuantity(delta: number) {
+    productQuantity = Math.max(1, (Number(productQuantity) || 0) + delta);
+    session.quantity = productQuantity;
+    session.quantityUnit = currentUnitLabel;
+    persistVendorDetails();
+  }
+
+  function handleQuantityInput() {
+    productQuantity = Math.max(1, Math.round(Number(productQuantity) || 1));
+    session.quantity = productQuantity;
+    session.quantityUnit = currentUnitLabel;
+    persistVendorDetails();
+  }
+
+  function setAcceptsGcash(val: boolean) {
+    acceptsGcash = val;
+    session.acceptsGcash = val;
+    persistVendorDetails();
   }
 
   /** Compress photo via canvas to stay under localStorage quota. */
@@ -356,28 +412,119 @@
       </div>
     </div>
 
-    <!-- Product Selection ("Binebenta") -->
-    <div class={`p-5 rounded-[28px] shadow-sm space-y-3 ${
+    <!-- Product Selection ("Binebenta"), Quantity & GCash -->
+    <div class={`p-5 rounded-[28px] shadow-sm space-y-4 border ${
       isDarkMode ? 'bg-[#271A10] border-[#3D2717]' : 'bg-white border-[#EAE4D9]'
     }`}>
-      <h2 class="text-xs font-bold uppercase tracking-wider text-[#796658]">
-        {language === 'tl' ? 'Produktong Binebenta:' : 'Product Being Sold:'}
-      </h2>
-      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        {#each PRODUCTS as p}
-          <button
-            type="button"
-            on:click={() => setProduct(p.name)}
-            class={`p-3 rounded-2xl border text-xs font-extrabold flex items-center justify-center gap-2 transition cursor-pointer min-h-[48px] ${
-              activeProduct.includes(p.name)
-                ? (isDarkMode ? 'bg-[#F59E0B] text-[#1A120B] border-[#F59E0B]' : 'bg-[#4A2E1B] text-white border-[#4A2E1B]')
-                : (isDarkMode ? 'bg-[#352317] text-white border-[#3D2717]' : 'bg-[#FAF7F2] text-[#4A2E1B] border-[#EAE4D9]')
-            }`}
-          >
-            <Icon name={p.icon} size={16} />
-            <span>{p.name}</span>
-          </button>
-        {/each}
+      <div class="space-y-2.5">
+        <h2 class="text-xs font-bold uppercase tracking-wider text-[#796658]">
+          {language === 'tl' ? 'Produktong Binebenta:' : 'Product Being Sold:'}
+        </h2>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {#each PRODUCTS as p}
+            <button
+              type="button"
+              on:click={() => setProduct(p.name)}
+              class={`p-3 rounded-2xl border text-xs font-extrabold flex items-center justify-center gap-2 transition cursor-pointer min-h-[48px] ${
+                activeProduct.includes(p.name)
+                  ? (isDarkMode ? 'bg-[#F59E0B] text-[#1A120B] border-[#F59E0B]' : 'bg-[#4A2E1B] text-white border-[#4A2E1B]')
+                  : (isDarkMode ? 'bg-[#352317] text-white border-[#3D2717]' : 'bg-[#FAF7F2] text-[#4A2E1B] border-[#EAE4D9]')
+              }`}
+            >
+              <Icon name={p.icon} size={16} />
+              <span>{p.name}</span>
+            </button>
+          {/each}
+        </div>
+      </div>
+
+      <!-- Quantity Input (with automatic unit) & GCash Option -->
+      <div class={`grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t ${
+        isDarkMode ? 'border-[#3D2717]' : 'border-[#EAE4D9]'
+      }`}>
+        <!-- Quantity Input with Auto Unit -->
+        <div class="space-y-1.5">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold uppercase tracking-wider text-[#796658]">
+              {language === 'tl' ? 'Dami ng Paninda:' : 'Quantity to Sell:'}
+            </span>
+            <span class="text-[11px] font-extrabold text-[#D97706] bg-[#FEF3C7] dark:bg-[#452B14] dark:text-[#F59E0B] px-2 py-0.5 rounded-full">
+              {currentUnitLabel}
+            </span>
+          </div>
+          <div class={`flex items-center gap-1.5 border rounded-2xl p-1.5 min-h-[48px] ${
+            isDarkMode ? 'bg-[#1A120B] border-[#3D2717]' : 'bg-[#FAF7F2] border-[#EAE4D9]'
+          }`}>
+            <button
+              type="button"
+              on:click={() => adjustQuantity(-5)}
+              class={`w-9 h-9 rounded-xl border font-black text-base transition cursor-pointer shrink-0 active:scale-95 ${
+                isDarkMode ? 'bg-[#352317] border-[#3D2717] text-[#FAF7F2] hover:bg-[#4A2E1B]' : 'bg-white border-[#EAE4D9] text-[#4A2E1B] hover:bg-[#F3EDE2]'
+              }`}
+              aria-label="Decrease quantity"
+            >
+              −
+            </button>
+            <div class="flex-1 flex items-center justify-center gap-1.5 min-w-0">
+              <input
+                type="number"
+                min="1"
+                max="9999"
+                bind:value={productQuantity}
+                on:change={handleQuantityInput}
+                class={`w-16 text-center bg-transparent text-base font-black outline-none ${
+                  isDarkMode ? 'text-[#FAF7F2]' : 'text-[#4A2E1B]'
+                }`}
+              />
+              <span class={`text-xs font-bold truncate ${isDarkMode ? 'text-[#D6C7B2]' : 'text-[#796658]'}`}>
+                {currentUnitLabel.split(' ')[0]}
+              </span>
+            </div>
+            <button
+              type="button"
+              on:click={() => adjustQuantity(5)}
+              class={`w-9 h-9 rounded-xl border font-black text-base transition cursor-pointer shrink-0 active:scale-95 ${
+                isDarkMode ? 'bg-[#352317] border-[#3D2717] text-[#FAF7F2] hover:bg-[#4A2E1B]' : 'bg-white border-[#EAE4D9] text-[#4A2E1B] hover:bg-[#F3EDE2]'
+              }`}
+              aria-label="Increase quantity"
+            >
+              +
+            </button>
+          </div>
+        </div>
+
+        <!-- GCash Payment Option -->
+        <div class="space-y-1.5">
+          <span class="text-xs font-bold uppercase tracking-wider text-[#796658] block">
+            {language === 'tl' ? 'Tumatanggap ng GCash?' : 'Accepts GCash?'}
+          </span>
+          <div class="grid grid-cols-2 gap-2 min-h-[48px]">
+            <button
+              type="button"
+              on:click={() => setAcceptsGcash(true)}
+              class={`px-3 py-2.5 rounded-2xl border text-xs font-black flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                acceptsGcash
+                  ? 'bg-[#007DFE] text-white border-[#007DFE] shadow-xs'
+                  : (isDarkMode ? 'bg-[#352317] text-white border-[#3D2717]' : 'bg-[#FAF7F2] text-[#4A2E1B] border-[#EAE4D9] hover:bg-white')
+              }`}
+            >
+              <span>💳</span>
+              <span>{language === 'tl' ? 'Oo (GCash)' : 'Yes (GCash)'}</span>
+            </button>
+            <button
+              type="button"
+              on:click={() => setAcceptsGcash(false)}
+              class={`px-3 py-2.5 rounded-2xl border text-xs font-black flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                !acceptsGcash
+                  ? (isDarkMode ? 'bg-[#F59E0B] text-[#1A120B] border-[#F59E0B]' : 'bg-[#4A2E1B] text-[#FAF7F2] border-[#4A2E1B] shadow-xs')
+                  : (isDarkMode ? 'bg-[#352317] text-white border-[#3D2717]' : 'bg-[#FAF7F2] text-[#4A2E1B] border-[#EAE4D9] hover:bg-white')
+              }`}
+            >
+              <span>💵</span>
+              <span>{language === 'tl' ? 'Cash Lang' : 'Cash Only'}</span>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
 

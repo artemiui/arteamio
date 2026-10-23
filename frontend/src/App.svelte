@@ -178,7 +178,8 @@
     product: string,
     productType: ProductType,
     photoUrl?: string,
-    customLocation?: { lat: number; lng: number; name: string }
+    customLocation?: { lat: number; lng: number; name: string },
+    extraDetails?: { quantity: number; quantityUnit: string; acceptsGcash: boolean }
   ) {
     const fallbackLat = 14.6091; // España / Manila default
     const fallbackLng = 120.9898;
@@ -190,6 +191,10 @@
         lat,
         lng,
         product,
+        productType,
+        quantity: extraDetails?.quantity ?? 50,
+        quantityUnit: extraDetails?.quantityUnit ?? (productType === 'taho' ? 'baso (cups)' : productType === 'siomai' || productType === 'balut' ? 'piraso (pieces)' : 'order / piraso'),
+        acceptsGcash: extraDetails?.acceptsGcash ?? true,
         verifiedPhoto: photoUrl,
         createdAt: new Date().toISOString(),
       };

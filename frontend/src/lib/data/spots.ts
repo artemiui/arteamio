@@ -92,6 +92,9 @@ export function generateTaggedVendorsAround(centerLat: number, centerLng: number
       distanceM: 130,
       etaMins: 2,
       status: 'live',
+      acceptsGcash: true,
+      quantity: 45,
+      quantityUnit: 'baso',
       verifiedPhoto: 'https://images.unsplash.com/photo-1541696432-82c6da8ce7bf?auto=format&fit=crop&w=400&q=80',
     },
     {
@@ -107,6 +110,9 @@ export function generateTaggedVendorsAround(centerLat: number, centerLng: number
       distanceM: 190,
       etaMins: 3,
       status: 'live',
+      acceptsGcash: true,
+      quantity: 80,
+      quantityUnit: 'piraso',
       verifiedPhoto: 'https://images.unsplash.com/photo-1563245372-f21724e3856d?auto=format&fit=crop&w=400&q=80',
     },
     {
@@ -122,6 +128,9 @@ export function generateTaggedVendorsAround(centerLat: number, centerLng: number
       distanceM: 260,
       etaMins: 4,
       status: 'live',
+      acceptsGcash: false,
+      quantity: 35,
+      quantityUnit: 'piraso',
       verifiedPhoto: 'https://images.unsplash.com/photo-1506084868230-bb9d95c24759?auto=format&fit=crop&w=400&q=80',
     },
     {
@@ -137,6 +146,9 @@ export function generateTaggedVendorsAround(centerLat: number, centerLng: number
       distanceM: 320,
       etaMins: 5,
       status: 'stopped',
+      acceptsGcash: true,
+      quantity: 25,
+      quantityUnit: 'order',
       verifiedPhoto: 'https://images.unsplash.com/photo-1517256064527-09c73fc73e38?auto=format&fit=crop&w=400&q=80',
     },
     {
@@ -152,6 +164,9 @@ export function generateTaggedVendorsAround(centerLat: number, centerLng: number
       distanceM: 290,
       etaMins: 4,
       status: 'live',
+      acceptsGcash: false,
+      quantity: 30,
+      quantityUnit: 'baso',
       verifiedPhoto: 'https://images.unsplash.com/photo-1541696432-82c6da8ce7bf?auto=format&fit=crop&w=400&q=80',
     },
     {
@@ -167,6 +182,9 @@ export function generateTaggedVendorsAround(centerLat: number, centerLng: number
       distanceM: 380,
       etaMins: 6,
       status: 'live',
+      acceptsGcash: true,
+      quantity: 110,
+      quantityUnit: 'piraso',
       verifiedPhoto: 'https://images.unsplash.com/photo-1496116218417-1a781b1c416c?auto=format&fit=crop&w=400&q=80',
     },
   ];

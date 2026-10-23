@@ -1493,16 +1493,24 @@
             <Icon name={selectedVendor.icon} size={24} />
           </div>
           <div>
-            <div class="flex items-center gap-1.5">
+            <div class="flex items-center gap-1.5 flex-wrap">
               <h4 class="text-base font-black">{selectedVendor.name}</h4>
               {#if selectedVendor.verifiedPhoto}
                 <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-green-500/20 text-green-400">
                   ✓ Verified
                 </span>
               {/if}
+              {#if selectedVendor.acceptsGcash}
+                <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-[#007DFE]/15 text-[#007DFE]">
+                  💳 GCash
+                </span>
+              {/if}
             </div>
             <p class={`text-xs font-bold ${isDarkMode ? 'text-[#D6C7B2]' : 'text-[#796658]'}`}>
               {language === 'tl' ? selectedVendor.productNameTl : selectedVendor.productName}
+              {#if selectedVendor.quantity}
+                <span class="opacity-75"> • {selectedVendor.quantity} {selectedVendor.quantityUnit || 'pcs'}</span>
+              {/if}
             </p>
           </div>
         </div>
@@ -1585,11 +1593,18 @@
           <div class="flex items-center gap-2.5">
             <Logo {isDarkMode} className="h-8 w-auto object-contain" />
             <div>
-              <h3 class="text-base font-black">
-                {language === 'tl' ? 'Menu ng Tindero' : 'Vendor Dashboard'}
-              </h3>
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <h3 class="text-base font-black">
+                  {language === 'tl' ? 'Menu ng Tindero' : 'Vendor Dashboard'}
+                </h3>
+                {#if session.acceptsGcash !== false}
+                  <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-[#007DFE]/15 text-[#007DFE]">
+                    💳 GCash
+                  </span>
+                {/if}
+              </div>
               <p class={`text-xs font-medium ${isDarkMode ? 'text-[#D6C7B2]' : 'text-[#796658]'}`}>
-                {session.product || 'Taho'} • {session.locationName.split(',')[0]}
+                {session.product || 'Taho'}{session.quantity ? ` (${session.quantity} ${(session.quantityUnit || 'baso').split(' ')[0]})` : ''} • {session.locationName.split(',')[0]}
               </p>
             </div>
           </div>
