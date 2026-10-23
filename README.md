@@ -8,7 +8,7 @@ Hyperlocal spatial intelligence and real-time vendor tracking platform for stree
 
 ## Overview
 
-* **Smart Spot Finder:** Helps food carts and pop-up stalls find high-earning locations by scoring foot traffic near transit hubs (jeepney stops, LRT/MRT stations, tricycle terminals) and factoring in nearby competitors.
+* **Smart Spot Finder:** Helps food carts and pop-up stalls find high-earning locations by scoring foot traffic near transit hubs (jeepney stops, LRT/MRT stations, tricycle terminals) and factoring in nearby competitors using the Huff Model.
 * **Live Vendor Tracking:** Lets roving street vendors (like *taho* and *balot* sellers) broadcast their live location, giving nearby customers advance notice so they never miss a passing vendor.
 * **Peak-Hour Route Guidance:** Pinpoints commuter rush windows and high-traffic walking paths to help vendors plan better routes and maximize daily sales.
 
