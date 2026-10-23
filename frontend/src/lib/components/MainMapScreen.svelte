@@ -3,7 +3,14 @@
   import type { DemandHotspot, DemandHotspotCategory, Language, ProductType, TaggedVendor, UserSession } from '../types';
   import { BUSINESS_ARCHETYPES, generateAnchorsAround, generateCompetitorsAround, PRODUCT_LEGEND } from '../data/spots';
   import { getAllDemandHotspots, getDemandHotspotsForViewport, getOpportunityRating, HOTSPOT_CATEGORY_META, HOTSPOT_LEVEL_META } from '../data/hotspots';
-  import { evaluateLocationViability, calculateDistanceM, getRecommendedZones } from '../gravity';
+  import {
+    evaluateLocationViability,
+    calculateDistanceM,
+    getRecommendedZones,
+    evaluateHeatmapProbe,
+    type HeatmapSpotProbeResult,
+  } from '../gravity';
+  import { ViabilityHeatmapLayer } from '../heatmapLayer';
   import { updateVendorStatusOnBackend } from '../api';
   import type { RecommendedZone } from '../types';
   import Logo from './Logo.svelte';
@@ -119,14 +126,35 @@
   // Notification chime alert state
   let alertToast: string | null = null;
 
-  // Heatmap Layer state & toggle (default active)
+  // True Spatial Canvas Heatmap Layer state & toggle
   let isHeatmapActive: boolean = true;
-  let heatmapCircles: L.Circle[] = [];
+  let heatmapCanvasLayer: ViabilityHeatmapLayer | null = null;
+  let sweetSpotMarkers: L.Marker[] = [];
+  let heatmapProbeResult: HeatmapSpotProbeResult | null = null;
+  let heatmapProbeMarker: L.Marker | null = null;
+  let heatmapProductOverride: string | null = null;
 
-  // Wider-Scope Smart Zone Recommendations (Huff's Gravity Model)
-  $: recommendedZones = (session.role === 'vendor')
-    ? getRecommendedZones(session.lat, session.lng, session.product || 'taho', 3500)
-    : [];
+  $: activeHeatmapProduct =
+    heatmapProductOverride ||
+    (session.role === 'vendor' ? (session.product || 'taho') : (activeFilter || 'taho'));
+
+  // Wider-Scope Smart Zone Recommendations (Huff's Gravity Model + Competitor Repulsion)
+  $: recommendedZones = getRecommendedZones(
+    session.lat,
+    session.lng,
+    activeHeatmapProduct,
+    4000,
+    vendors
+  );
+
+  // Viewport-aware discovered sweet spots for the wider map when panning/zooming
+  $: viewportSweetSpots = getRecommendedZones(
+    mapCenterLat || session.lat,
+    mapCenterLng || session.lng,
+    activeHeatmapProduct,
+    4200,
+    vendors
+  );
 
   // Vendor Ubos Na & Zone Suggestions UI states
   let showSoldOutConfirmModal: boolean = false;
@@ -135,6 +163,22 @@
 
   function toggleHeatmap() {
     isHeatmapActive = !isHeatmapActive;
+    if (!isHeatmapActive) {
+      heatmapProbeResult = null;
+    }
+    renderMapElements();
+  }
+
+  function handleMapClickForHeatmap(e: L.LeafletMouseEvent) {
+    if (!isHeatmapActive) return;
+    selectedVendor = null;
+    selectedHotspot = null;
+    heatmapProbeResult = evaluateHeatmapProbe(
+      e.latlng.lat,
+      e.latlng.lng,
+      activeHeatmapProduct,
+      vendors
+    );
     renderMapElements();
   }
 
@@ -174,6 +218,7 @@
 
     applyMapTileTheme();
     map.on('moveend', handleMapMoveEnd);
+    map.on('click', handleMapClickForHeatmap);
     reloadHotspots();
     renderMapElements();
   });
@@ -181,6 +226,10 @@
   onDestroy(() => {
     if (map) {
       map.off('moveend', handleMapMoveEnd);
+      map.off('click', handleMapClickForHeatmap);
+      if (heatmapCanvasLayer) map.removeLayer(heatmapCanvasLayer);
+      sweetSpotMarkers.forEach((m) => map?.removeLayer(m));
+      if (heatmapProbeMarker) map.removeLayer(heatmapProbeMarker);
       if (viabilityMarker) map.removeLayer(viabilityMarker);
       if (viabilityLine) map.removeLayer(viabilityLine);
       if (targetedRouteLine) map.removeLayer(targetedRouteLine);
@@ -373,7 +422,7 @@
     ? demandHotspots
     : demandHotspots.filter((h) => h.category === activeHotspotCategory);
 
-  $: if (map && (filteredVendors || session || isDarkMode || isHotspotsVisible || activeHotspotCategory || demandHotspots || selectedHotspot || recommendedViabilitySpot || targetedRoute || isHeatmapActive)) {
+  $: if (map && (filteredVendors || session || isDarkMode || isHotspotsVisible || activeHotspotCategory || demandHotspots || selectedHotspot || recommendedViabilitySpot || targetedRoute || isHeatmapActive || activeHeatmapProduct || viewportSweetSpots)) {
     renderMapElements();
   }
 
@@ -402,9 +451,13 @@
       targetedRouteMarker = null;
     }
 
-    // Clear old heatmap circles
-    heatmapCircles.forEach((c) => map?.removeLayer(c));
-    heatmapCircles = [];
+    // Clear old sweet spot & probe markers
+    sweetSpotMarkers.forEach((m) => map?.removeLayer(m));
+    sweetSpotMarkers = [];
+    if (heatmapProbeMarker) {
+      map.removeLayer(heatmapProbeMarker);
+      heatmapProbeMarker = null;
+    }
 
     // 1. Render User's Location Pin (Google Maps Blue Dot / Pin)
     if (userMarker) map.removeLayer(userMarker);
@@ -497,22 +550,24 @@
         const lvlMeta = HOTSPOT_LEVEL_META[hotspot.potentialLevel] || HOTSPOT_LEVEL_META.medium;
         const catMeta = HOTSPOT_CATEGORY_META[hotspot.category] || HOTSPOT_CATEGORY_META.barangay;
 
-        // Color-coded hotspot catchment circle
-        const circle = L.circle([hotspot.lat, hotspot.lng], {
-          radius: hotspot.radiusM,
-          color: lvlMeta.mapStroke,
-          fillColor: lvlMeta.mapFill,
-          fillOpacity: isSelected ? 0.35 : 0.18,
-          weight: isSelected ? 3 : 2,
-          dashArray: hotspot.potentialLevel === 'high' ? undefined : '4, 4',
-        }).addTo(map!);
+        // Color-coded hotspot catchment circle (hidden when thermal heatmap canvas is active to avoid duplicate circles)
+        if (!isHeatmapActive) {
+          const circle = L.circle([hotspot.lat, hotspot.lng], {
+            radius: hotspot.radiusM,
+            color: lvlMeta.mapStroke,
+            fillColor: lvlMeta.mapFill,
+            fillOpacity: isSelected ? 0.35 : 0.18,
+            weight: isSelected ? 3 : 2,
+            dashArray: hotspot.potentialLevel === 'high' ? undefined : '4, 4',
+          }).addTo(map!);
 
-        circle.on('click', () => {
-          selectedHotspot = hotspot;
-          selectedVendor = null;
-          map?.flyTo([hotspot.lat, hotspot.lng], 16, { duration: 0.5 });
-        });
-        hotspotCircles.push(circle);
+          circle.on('click', () => {
+            selectedHotspot = hotspot;
+            selectedVendor = null;
+            map?.flyTo([hotspot.lat, hotspot.lng], 16, { duration: 0.5 });
+          });
+          hotspotCircles.push(circle);
+        }
 
         // Color-coded hotspot marker badge with Category Icon (& Opportunity Score in Vendor mode only)
         const isVendorMode = session.role === 'vendor';
@@ -606,41 +661,57 @@
       `);
     }
 
-    // 5b. Render Heatmap Density Layer (if active)
+    // 5b. Render World-Pinned Subtle Spatial Huff Gravity Heatmap Layer + Probe Pin
     if (isHeatmapActive) {
-      const heatClusters: { lat: number; lng: number; intensity: number }[] = [];
-      anchors.forEach((a) => {
-        heatClusters.push({ lat: a.lat, lng: a.lng, intensity: Math.round(a.weight * 80) });
-      });
-      demandHotspots.forEach((h) => {
-        heatClusters.push({ lat: h.lat, lng: h.lng, intensity: h.opportunityScore });
-      });
+      if (!heatmapCanvasLayer) {
+        heatmapCanvasLayer = new ViabilityHeatmapLayer({
+          centerLat: session.lat,
+          centerLng: session.lng,
+          productType: activeHeatmapProduct,
+          isDarkMode,
+          activeVendors: vendors,
+        });
+        heatmapCanvasLayer.addTo(map!);
+      } else {
+        heatmapCanvasLayer.setHeatmapState({
+          centerLat: session.lat,
+          centerLng: session.lng,
+          productType: activeHeatmapProduct,
+          isDarkMode,
+          activeVendors: vendors,
+        });
+      }
 
-      heatClusters.forEach((hc) => {
-        const isHigh = hc.intensity >= 80;
-        const isMed = hc.intensity >= 50 && hc.intensity < 80;
-        const color = isHigh ? '#EF4444' : (isMed ? '#F59E0B' : '#EAB308');
-        const radius = isHigh ? 160 : (isMed ? 130 : 95);
-        const opacity = isHigh ? 0.30 : (isMed ? 0.22 : 0.15);
-
-        const circle = L.circle([hc.lat, hc.lng], {
-          radius,
-          color,
-          fillColor: color,
-          fillOpacity: opacity,
-          stroke: false,
+      // Render live probe marker if user tapped anywhere on the heatmap
+      if (heatmapProbeResult) {
+        const probeColor =
+          heatmapProbeResult.score >= 80
+            ? '#DC2626'
+            : heatmapProbeResult.score >= 60
+              ? '#D97706'
+              : '#CA8A04';
+        const probeHtml = `
+          <div class="relative flex flex-col items-center select-none -translate-y-3">
+            <div class="px-2.5 py-1 rounded-full bg-[#1A120B] text-white border-2 border-white shadow-2xl text-[11px] font-black whitespace-nowrap mb-1 flex items-center gap-1">
+              <span>🎯</span>
+              <span>${heatmapProbeResult.score}/100</span>
+            </div>
+            <div class="w-5 h-5 rounded-full border-2 border-white shadow-lg animate-pulse" style="background-color: ${probeColor}"></div>
+          </div>
+        `;
+        heatmapProbeMarker = L.marker([heatmapProbeResult.lat, heatmapProbeResult.lng], {
+          icon: L.divIcon({
+            html: probeHtml,
+            className: 'heatmap-probe-pin',
+            iconSize: [90, 48],
+            iconAnchor: [45, 42],
+          }),
+          zIndexOffset: 940,
         }).addTo(map!);
-
-        const outerAura = L.circle([hc.lat, hc.lng], {
-          radius: radius * 1.45,
-          color,
-          fillColor: color,
-          fillOpacity: opacity * 0.45,
-          stroke: false,
-        }).addTo(map!);
-
-        heatmapCircles.push(circle, outerAura);
-      });
+      }
+    } else if (heatmapCanvasLayer) {
+      map.removeLayer(heatmapCanvasLayer);
+      heatmapCanvasLayer = null;
     }
 
     // 6. Draw Active Targeted Navigation Route Line & Destination Waypoint Marker
@@ -1865,21 +1936,161 @@
     </button>
   </div>
 
-  <!-- FLOATING HEATMAP MICRO-LEGEND (BOTTOM LEFT) -->
+  <!-- FLOATING HUFF GRAVITY HEATMAP LEGEND & PRODUCT LENS (BOTTOM LEFT) -->
   {#if isHeatmapActive}
-    <div class={`absolute bottom-6 left-4 z-20 flex items-center gap-2 px-3 py-1.5 rounded-2xl shadow-lg border backdrop-blur-md text-[11px] font-bold pointer-events-auto animate-fade-in ${
+    <div class={`absolute bottom-6 left-4 z-20 flex flex-col gap-1.5 p-2.5 rounded-2xl shadow-xl border backdrop-blur-md text-[11px] font-bold pointer-events-auto animate-fade-in max-w-[calc(100vw-5.5rem)] sm:max-w-xs ${
       isDarkMode ? 'bg-[#271A10]/95 border-[#3D2717] text-[#FAF7F2]' : 'bg-white/95 border-[#EAE4D9] text-[#4A2E1B]'
     }`}>
-      <span class="text-xs">🗺️</span>
-      <span class="text-[#D97706] uppercase tracking-wider">{language === 'tl' ? 'Dagsa ng Tao:' : 'Foot Traffic:'}</span>
-      <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-red-500 inline-block"></span>{language === 'tl' ? 'Dagsa' : 'High'}</span>
-      <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-amber-500 inline-block"></span>{language === 'tl' ? 'Katamtaman' : 'Med'}</span>
-      <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-yellow-400 inline-block"></span>{language === 'tl' ? 'Mababa' : 'Low'}</span>
+      <div class="flex items-center justify-between gap-2">
+        <span class="text-[#D97706] font-black uppercase tracking-wider flex items-center gap-1">
+          <Icon name="map" size={13} />
+          <span>{language === 'tl' ? 'Huff Viability Heatmap' : 'Huff Viability Heatmap'}</span>
+        </span>
+        <button
+          type="button"
+          on:click={() => (showZoneSuggestionsDrawer = true)}
+          class="px-2 py-0.5 rounded-lg bg-red-500/15 hover:bg-red-500/25 text-red-600 dark:text-red-400 text-[10px] font-black cursor-pointer transition"
+        >
+          🎯 {language === 'tl' ? 'Top Zones' : 'Top Zones'}
+        </button>
+      </div>
+
+      <!-- Continuous Thermal Gradient Bar -->
+      <div class="space-y-1">
+        <div class="h-2 w-full rounded-full bg-gradient-to-r from-yellow-300 via-amber-500 to-red-600 shadow-inner"></div>
+        <div class="flex items-center justify-between text-[9px] font-extrabold opacity-80">
+          <span>{language === 'tl' ? '🟡 Katamtaman' : '🟡 Moderate'}</span>
+          <span>{language === 'tl' ? '🟠 Mataas na Tao' : '🟠 High Traffic'}</span>
+          <span class="text-red-500 font-black">{language === 'tl' ? '🔴 Sweet Spot (0 Kalaban)' : '🔴 Prime Uncontested'}</span>
+        </div>
+      </div>
+
+      <!-- Product-Specific Heatmap Lens Switcher -->
+      <div class="flex items-center gap-1 pt-0.5">
+        <span class="text-[9px] opacity-70 mr-0.5">{language === 'tl' ? 'Paninda:' : 'Lens:'}</span>
+        {#each ['Taho', 'Siomai', 'Balut'] as prodLens}
+          <button
+            type="button"
+            on:click={() => {
+              heatmapProductOverride = prodLens.toLowerCase();
+              if (heatmapProbeResult) {
+                heatmapProbeResult = evaluateHeatmapProbe(
+                  heatmapProbeResult.lat,
+                  heatmapProbeResult.lng,
+                  heatmapProductOverride,
+                  vendors
+                );
+              }
+              renderMapElements();
+            }}
+            class={`px-2 py-0.5 rounded-lg text-[10px] font-black transition cursor-pointer ${
+              activeHeatmapProduct.toLowerCase().includes(prodLens.toLowerCase())
+                ? 'bg-[#D97706] text-white shadow-xs'
+                : (isDarkMode ? 'bg-[#1A120B] text-[#D6C7B2] hover:bg-[#352317]' : 'bg-[#FAF7F2] text-[#796658] hover:bg-[#EAE4D9]')
+            }`}
+          >
+            {prodLens}
+          </button>
+        {/each}
+      </div>
+
+      <p class="text-[9px] opacity-75 leading-tight">
+        💡 {language === 'tl' ? 'Pindutin ang kahit anong pulang bahagi sa mapa para suriin ang pwesto at ruta.' : 'Tap any glowing zone on the map to analyze viability & route.'}
+      </p>
+    </div>
+  {/if}
+
+  <!-- INTERACTIVE HEATMAP SPOT ANALYZER PROBE CARD (WHEN USER TAPS ANYWHERE ON HEATMAP) -->
+  {#if heatmapProbeResult && isHeatmapActive && !selectedVendor && !selectedHotspot}
+    {@const walkDist = calculateDistanceM(session.lat, session.lng, heatmapProbeResult.lat, heatmapProbeResult.lng)}
+    {@const walkEta = Math.max(1, Math.round(walkDist / 67))}
+    <div class="absolute bottom-24 sm:bottom-6 left-1/2 -translate-x-1/2 z-30 w-full max-w-md px-4 pointer-events-auto animate-fade-in">
+      <div class={`p-4 rounded-[28px] shadow-2xl border space-y-3 backdrop-blur-md ${
+        isDarkMode ? 'bg-[#271A10]/95 border-[#F59E0B]/40 text-[#FAF7F2]' : 'bg-white/95 border-[#EAE4D9] text-[#4A2E1B]'
+      }`}>
+        <div class="flex items-start justify-between gap-2">
+          <div class="min-w-0">
+            <span class="text-[10px] font-black uppercase tracking-wider text-[#D97706] flex items-center gap-1">
+              <span>🎯</span>
+              <span>{language === 'tl' ? `Sinuring Pwesto para sa ${activeHeatmapProduct.toUpperCase()}` : `Huff Spot Analysis (${activeHeatmapProduct.toUpperCase()})`}</span>
+            </span>
+            <h4 class="text-sm sm:text-base font-black truncate mt-0.5">
+              {language === 'tl' ? `Malapit sa ${heatmapProbeResult.nearestAnchorName}` : `Near ${heatmapProbeResult.nearestAnchorName}`}
+            </h4>
+            <p class="text-[11px] font-bold text-[#796658] dark:text-[#D6C7B2]">
+              ~{walkDist}m {language === 'tl' ? 'mula sa iyo' : 'from you'} • ~{walkEta} {language === 'tl' ? 'min lakad' : 'min walk'}
+            </p>
+          </div>
+
+          <div class="flex items-center gap-1.5 shrink-0">
+            <div class={`px-2.5 py-1 rounded-xl text-xs font-black border ${
+              heatmapProbeResult.score >= 80
+                ? 'bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/30'
+                : heatmapProbeResult.score >= 60
+                  ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30'
+                  : 'bg-yellow-500/15 text-yellow-700 dark:text-yellow-400 border-yellow-500/30'
+            }`}>
+              {heatmapProbeResult.score}/100
+            </div>
+            <button
+              type="button"
+              on:click={() => {
+                heatmapProbeResult = null;
+                renderMapElements();
+              }}
+              class="w-7 h-7 rounded-full bg-black/5 dark:bg-white/10 flex items-center justify-center text-xs font-black cursor-pointer"
+              aria-label="Close probe"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 text-[11px]">
+          <div class={`p-2.5 rounded-xl ${isDarkMode ? 'bg-[#1A120B]' : 'bg-[#FAF7F2]'}`}>
+            <span class="text-[9px] uppercase font-bold opacity-70 block">{language === 'tl' ? 'Huff Pull (Sakayan)' : 'Anchor Pull'}</span>
+            <span class="font-black text-xs">~{heatmapProbeResult.nearestAnchorDistM}m {language === 'tl' ? 'sa hub' : 'to hub'}</span>
+          </div>
+          <div class={`p-2.5 rounded-xl ${isDarkMode ? 'bg-[#1A120B]' : 'bg-[#FAF7F2]'}`}>
+            <span class="text-[9px] uppercase font-bold opacity-70 block">{language === 'tl' ? 'Kaparehong Paninda (150m)' : 'Same-Product Rivals'}</span>
+            <span class={`font-black text-xs ${heatmapProbeResult.sameProductCompetitors150m === 0 ? 'text-green-500' : 'text-amber-500'}`}>
+              {heatmapProbeResult.sameProductCompetitors150m === 0
+                ? (language === 'tl' ? '✓ 0 Kalaban (Bakante!)' : '✓ 0 Rivals (Open!)')
+                : `${heatmapProbeResult.sameProductCompetitors150m} ${language === 'tl' ? 'kalaban sa paligid' : 'nearby rival(s)'}`}
+            </span>
+          </div>
+        </div>
+
+        <p class={`text-[11px] p-2.5 rounded-xl font-semibold leading-snug ${
+          isDarkMode ? 'bg-[#1A120B] text-[#D6C7B2]' : 'bg-[#FAF7F2] text-[#4A2E1B]'
+        }`}>
+          💡 {language === 'tl' ? heatmapProbeResult.adviceTl : heatmapProbeResult.adviceEn}
+        </p>
+
+        <button
+          type="button"
+          on:click={() => {
+            if (heatmapProbeResult) {
+              handleTargetLocation(
+                heatmapProbeResult.lat,
+                heatmapProbeResult.lng,
+                heatmapProbeResult.nearestAnchorName
+              );
+              heatmapProbeResult = null;
+            }
+          }}
+          class="w-full py-2.5 px-4 rounded-xl bg-[#D97706] hover:bg-[#B45309] text-white text-xs font-black transition cursor-pointer flex items-center justify-center gap-1.5 shadow-md active:scale-98"
+        >
+          <span>🚶‍♂️</span>
+          <span>{language === 'tl' ? 'Ituro ang Ruta Papunta sa Pwestong Ito' : 'Guide Walking Route to This Spot'}</span>
+          <span>→</span>
+        </button>
+      </div>
     </div>
   {/if}
 
   <!-- SMART ZONE MATCHMAKER DRAWER (HUFF'S GRAVITY MODEL) -->
-  {#if showZoneSuggestionsDrawer && session.role === 'vendor'}
+  {#if showZoneSuggestionsDrawer}
     <div class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-xs animate-fade-in pointer-events-auto">
       <div class={`w-full max-w-lg max-h-[85vh] rounded-t-[32px] sm:rounded-[32px] border p-5 sm:p-6 space-y-4 shadow-2xl overflow-y-auto ${
         isDarkMode ? 'bg-[#271A10] border-[#3D2717] text-[#FAF7F2]' : 'bg-white border-[#EAE4D9] text-[#4A2E1B]'
