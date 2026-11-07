@@ -10,6 +10,7 @@
   export let onToggleLanguage: (() => void) | undefined = undefined;
   export let onSwitchRole: () => void;
   export let onResetSession: () => void;
+  export let onUpdateLocation: ((lat: number, lng: number, locationName?: string) => void) | undefined = undefined;
   export let onNavigate: (route: string) => void;
 </script>
 
@@ -22,6 +23,7 @@
   {onToggleLanguage}
   {onSwitchRole}
   {onResetSession}
+  {onUpdateLocation}
   onNavigateToLanding={() => onNavigate('landing')}
   onNavigateToSettings={() => onNavigate('settings')}
   onNavigateToSearch={() => onNavigate('search')}

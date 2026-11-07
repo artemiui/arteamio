@@ -207,6 +207,21 @@
       };
       showVendorPrompt = false;
       saveSessionAndNavigate(newSession, 'map');
+
+      // Register vendor on backend for real-time location streaming
+      registerVendorOnBackend({
+        name: `Manininda (${product})`,
+        product_type: productType,
+        product_name: product,
+        lat,
+        lng,
+        status: 'live',
+        verified_photo: photoUrl,
+      }).then((created) => {
+        if (created && created.id && typeof localStorage !== 'undefined') {
+          localStorage.setItem('pwesto_vendor_id', created.id);
+        }
+      });
     }
 
     // If vendor explicitly chose a base neighborhood
@@ -269,6 +284,17 @@
     persistSession(session);
   }
 
+  function handleUpdateSessionLocation(lat: number, lng: number, locationName?: string) {
+    if (!session) return;
+    session = {
+      ...session,
+      lat,
+      lng,
+      ...(locationName ? { locationName } : {}),
+    };
+    persistSession(session);
+  }
+
   function handleResetSession() {
     localStorage.removeItem(SESSION_KEY);
     session = null;
@@ -312,6 +338,7 @@
         onToggleDarkMode={handleToggleDarkMode}
         onToggleLanguage={handleToggleLanguage}
         onResetSession={handleResetSession}
+        onUpdateLocation={handleUpdateSessionLocation}
         onNavigate={(r) => router.navigate(r as PageRoute)}
       />
     {:else}

@@ -11,7 +11,7 @@
     type HeatmapSpotProbeResult,
   } from '../gravity';
   import { ViabilityHeatmapLayer } from '../heatmapLayer';
-  import { updateVendorStatusOnBackend } from '../api';
+  import { updateVendorLocationOnBackend, updateVendorStatusOnBackend } from '../api';
   import type { RecommendedZone } from '../types';
   import Logo from './Logo.svelte';
   import HotspotDetailCard from './HotspotDetailCard.svelte';
@@ -29,6 +29,7 @@
   export let onNavigateToLanding: (() => void) | undefined = undefined;
   export let onSwitchRole: () => void;
   export let onResetSession: () => void;
+  export let onUpdateLocation: ((lat: number, lng: number, locationName?: string) => void) | undefined = undefined;
   export let onNavigateToSettings: (() => void) | undefined = undefined;
   export let onNavigateToSearch: (() => void) | undefined = undefined;
   export let onNavigateToVendor: (() => void) | undefined = undefined;
@@ -204,6 +205,111 @@
   let showSoldOutCelebration: boolean = false;
   let showZoneSuggestionsDrawer: boolean = false;
 
+  // Real-time GPS watchPosition state for live vendor/user movement tracking
+  let geoWatchId: number | null = null;
+  let isFollowingGps: boolean = true;
+  let lastRawGpsLat: number | null = null;
+  let lastRawGpsLng: number | null = null;
+  let lastHotspotReloadLat: number = session.lat;
+  let lastHotspotReloadLng: number = session.lng;
+  let lastBackendStreamTime: number = 0;
+
+  function isGpsLocationName(name?: string): boolean {
+    if (!name) return true;
+    const lower = name.toLowerCase();
+    return (
+      lower.includes('gps') ||
+      lower.includes('kasalukuyang lokasyon') ||
+      lower.includes('current location')
+    );
+  }
+
+  function startLiveGpsTracking() {
+    if (typeof window === 'undefined' || !('geolocation' in navigator)) return;
+    if (geoWatchId !== null) {
+      navigator.geolocation.clearWatch(geoWatchId);
+    }
+
+    geoWatchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        const newLat = Number(pos.coords.latitude.toFixed(6));
+        const newLng = Number(pos.coords.longitude.toFixed(6));
+
+        const movedFromLastRawM =
+          lastRawGpsLat !== null && lastRawGpsLng !== null
+            ? calculateDistanceM(lastRawGpsLat, lastRawGpsLng, newLat, newLng)
+            : 0;
+
+        lastRawGpsLat = newLat;
+        lastRawGpsLng = newLng;
+
+        // Track continuously if session is in GPS mode, or if a live vendor physically moves >= 2m
+        const isLiveVendorMoving =
+          session.role === 'vendor' && vendorStatus === 'live' && movedFromLastRawM >= 2;
+        if (!isGpsLocationName(session.locationName) && !isLiveVendorMoving && !isFollowingGps) {
+          return;
+        }
+        // If user manually searched a custom city/hub and hasn't moved or clicked GPS recenter yet, keep their searched view
+        if (!isGpsLocationName(session.locationName) && movedFromLastRawM < 2) {
+          return;
+        }
+
+        const movedFromSessionM = calculateDistanceM(session.lat, session.lng, newLat, newLng);
+        if (movedFromSessionM < 1 && Math.abs(session.lat - newLat) < 0.000005 && Math.abs(session.lng - newLng) < 0.000005) {
+          return;
+        }
+
+        // Sync currentSessionLat/Lng so the external search reactive block does not force-reset zoom
+        currentSessionLat = newLat;
+        currentSessionLng = newLng;
+        session = {
+          ...session,
+          lat: newLat,
+          lng: newLng,
+        };
+        onUpdateLocation?.(newLat, newLng);
+
+        // Immediately move marker & circle for zero-latency visual feedback
+        if (userMarker) userMarker.setLatLng([newLat, newLng]);
+        if (userCircle) userCircle.setLatLng([newLat, newLng]);
+
+        // Follow the vendor/user on the map when sharing live location
+        if (map && (isFollowingGps || (session.role === 'vendor' && vendorStatus === 'live'))) {
+          mapCenterLat = Number(newLat.toFixed(5));
+          mapCenterLng = Number(newLng.toFixed(5));
+          map.panTo([newLat, newLng], { animate: true, duration: 0.45 });
+        }
+
+        // Stream live vendor coordinates to backend (throttled to every 1.5s)
+        if (session.role === 'vendor' && vendorStatus !== 'sold_out') {
+          const now = Date.now();
+          if (now - lastBackendStreamTime >= 1500) {
+            lastBackendStreamTime = now;
+            const vendorId = localStorage.getItem('pwesto_vendor_id') || 'v-current';
+            updateVendorLocationOnBackend(vendorId, newLat, newLng, vendorStatus);
+          }
+        }
+
+        // Reload nearby hotspots if vendor walked > 80m from last hotspot check
+        if (calculateDistanceM(lastHotspotReloadLat, lastHotspotReloadLng, newLat, newLng) >= 80) {
+          lastHotspotReloadLat = newLat;
+          lastHotspotReloadLng = newLng;
+          reloadHotspots(true);
+        }
+
+        renderMapElements();
+      },
+      (_err) => {
+        // Keep last known position if GPS signal drops temporarily
+      },
+      {
+        enableHighAccuracy: true,
+        maximumAge: 1500,
+        timeout: 10000,
+      }
+    );
+  }
+
   function toggleHeatmap() {
     isHeatmapActive = !isHeatmapActive;
     if (!isHeatmapActive) {
@@ -260,13 +366,21 @@
     }
 
     applyMapTileTheme();
+    map.on('dragstart', () => {
+      isFollowingGps = false;
+    });
     map.on('moveend', handleMapMoveEnd);
     map.on('click', handleMapClickForHeatmap);
     reloadHotspots();
     renderMapElements();
+    startLiveGpsTracking();
   });
 
   onDestroy(() => {
+    if (geoWatchId !== null && typeof navigator !== 'undefined' && 'geolocation' in navigator) {
+      navigator.geolocation.clearWatch(geoWatchId);
+      geoWatchId = null;
+    }
     if (map) {
       map.off('moveend', handleMapMoveEnd);
       map.off('click', handleMapClickForHeatmap);
@@ -795,14 +909,30 @@
   }
 
   function handleRecenterGPS() {
+    isFollowingGps = true;
     if (typeof window !== 'undefined' && 'geolocation' in navigator) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
-          session.lat = Number(pos.coords.latitude.toFixed(5));
-          session.lng = Number(pos.coords.longitude.toFixed(5));
+          const newLat = Number(pos.coords.latitude.toFixed(6));
+          const newLng = Number(pos.coords.longitude.toFixed(6));
+          const gpsLabel = language === 'tl' ? 'Kasalukuyang Lokasyon (GPS)' : 'Current Location (GPS)';
+          currentSessionLat = newLat;
+          currentSessionLng = newLng;
+          session = {
+            ...session,
+            lat: newLat,
+            lng: newLng,
+            locationName: gpsLabel,
+          };
+          onUpdateLocation?.(newLat, newLng, gpsLabel);
           if (map) {
-            map.flyTo([session.lat, session.lng], 16, { duration: 0.6 });
+            map.flyTo([newLat, newLng], 16, { duration: 0.6 });
           }
+          if (session.role === 'vendor' && vendorStatus !== 'sold_out') {
+            const vendorId = localStorage.getItem('pwesto_vendor_id') || 'v-current';
+            updateVendorLocationOnBackend(vendorId, newLat, newLng, vendorStatus);
+          }
+          reloadHotspots(true);
           renderMapElements();
         },
         (_err) => {
@@ -812,7 +942,7 @@
           }
           renderMapElements();
         },
-        { timeout: 4000, enableHighAccuracy: true }
+        { timeout: 4000, enableHighAccuracy: true, maximumAge: 0 }
       );
     } else {
       // IF GPS is off/unsupported, just pin to the location
